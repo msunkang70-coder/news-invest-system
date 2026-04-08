@@ -1,0 +1,154 @@
+# ============================================================
+# 주식 뉴스 모니터 설정
+# ============================================================
+
+# --- 관심 종목 ---
+stocks:
+  - name: "삼성전자"
+    ticker: "005930"
+    keywords: ["삼성전자", "삼성", "갤럭시", "파운드리", "이재용"]
+    keywords_en: ["Samsung Electronics", "Samsung", "Galaxy", "Samsung foundry"]
+    sector: "반도체"
+
+  - name: "SK하이닉스"
+    ticker: "000660"
+    keywords: ["SK하이닉스", "하이닉스", "HBM", "낸드"]
+    keywords_en: ["SK Hynix", "Hynix", "HBM memory"]
+    sector: "반도체"
+
+  - name: "네이버"
+    ticker: "035420"
+    keywords: ["네이버", "NAVER", "라인", "클로바"]
+    keywords_en: ["Naver", "NAVER", "LINE Corp", "Clova"]
+    sector: "인터넷"
+
+# --- RSS 피드 소스 (국내) ---
+feeds:
+  - name: "조선일보 경제"
+    url: "https://www.chosun.com/arc/outboundfeeds/rss/category/economy/?outputType=xml"
+  - name: "한국경제"
+    url: "https://www.hankyung.com/feed/all-news"
+  - name: "연합뉴스 경제"
+    url: "https://www.yna.co.kr/rss/economy.xml"
+  - name: "매일경제"
+    url: "https://www.mk.co.kr/rss/30100041/"
+  - name: "SBS Biz"
+    url: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=01&plink=RSSREADER"
+
+# --- 글로벌 뉴스 자동 생성 설정 ---
+global_news:
+  enabled: true
+  # 종목별 keywords_en + sector_queries로 Google News RSS 자동 생성
+  sector_queries:
+    반도체: ["semiconductor", "chip", "AI chip", "memory chip"]
+    인터넷: ["tech platform", "search engine", "AI platform"]
+  # 거시경제 공통 피드
+  macro_feeds:
+    - name: "Google News - 반도체"
+      query: "semiconductor chip market"
+    - name: "Google News - AI"
+      query: "artificial intelligence stock market"
+    - name: "Google News - 한국경제"
+      query: "South Korea economy stock"
+
+# --- 수집 설정 ---
+collector:
+  max_articles_per_feed: 30
+  request_timeout: 15
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) StockNewsBot/1.0"
+  extract_body: true
+  body_max_chars: 3000
+  # 기사 품질 필터
+  min_title_length: 10
+  min_body_length: 50
+  # 제목 유사도 dedup
+  title_similarity_threshold: 0.7
+  title_dedup_hours: 48
+
+# --- 분석 설정 ---
+analyzer:
+  min_relevance: 0.3
+  # 가중치 설정
+  weight_title: 0.5
+  weight_body_early: 0.3
+  weight_body_late: 0.1
+  # 본문 초반 기준 (앞 N글자)
+  early_body_chars: 500
+  positive_signals:
+    - "호실적"
+    - "매출증가"
+    - "수주"
+    - "상향"
+    - "흑자전환"
+    - "신고가"
+    - "호재"
+    - "성장"
+    - "수출증가"
+    - "영업이익"
+    - "순이익"
+    - "실적개선"
+    - "투자확대"
+    - "배당"
+    - "자사주"
+    - "목표가상향"
+    - "매수"
+    - "기대"
+    - "돌파"
+    - "반등"
+    - "surge"
+    - "beat"
+    - "upgrade"
+    - "bullish"
+    - "growth"
+    - "record high"
+    - "outperform"
+  negative_signals:
+    - "적자"
+    - "하락"
+    - "리콜"
+    - "소송"
+    - "하향"
+    - "악재"
+    - "매도"
+    - "감소"
+    - "위기"
+    - "손실"
+    - "적자전환"
+    - "규제"
+    - "벌금"
+    - "파업"
+    - "감산"
+    - "목표가하향"
+    - "급락"
+    - "부진"
+    - "둔화"
+    - "철수"
+    - "plunge"
+    - "downgrade"
+    - "bearish"
+    - "decline"
+    - "loss"
+    - "lawsuit"
+    - "recall"
+    - "underperform"
+
+# --- 알림 설정 ---
+alert:
+  min_relevance: 0.5
+  min_impact: 0.4
+  directions: ["positive", "negative", "mixed"]
+  cooldown_minutes: 30
+  quiet_hours_start: 23
+  quiet_hours_end: 7
+
+# --- Telegram 설정 ---
+telegram:
+  bot_token: ""
+  chat_id: ""
+
+# --- 스케줄러 설정 ---
+scheduler:
+  interval_minutes: 30
+
+# --- DB 경로 ---
+db_path: "data/news.db"

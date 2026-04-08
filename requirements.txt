@@ -1,0 +1,12 @@
+# 시장 영향 뉴스 자동 분석 시스템
+feedparser>=6.0.0
+requests>=2.31.0
+trafilatura>=1.6.0
+beautifulsoup4>=4.12.0
+python-dotenv>=1.0.0
+
+# 기존 호환
+pyyaml>=6.0
+streamlit>=1.30.0
+pandas>=2.0.0
+apscheduler>=3.10.0
