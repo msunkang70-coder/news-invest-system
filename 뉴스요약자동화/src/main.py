@@ -31,6 +31,7 @@ from analyzers.keyword_filter import filter_by_keywords
 from analyzers.impact_scorer import score_impact
 from analyzers.geopolitical_classifier import classify_geopolitical
 from analyzers.impact_chain_analyzer import analyze_impact_chains
+from analyzers.summarizer import summarize_news, build_market_context
 from utils.dedup import deduplicate
 from utils.cache import UrlCache
 from utils.db import save_news_items, save_indicators, get_db_stats
@@ -113,19 +114,57 @@ def run_news_pipeline(sources: str = "all"):
         logger.info("[파이프라인] 고영향 뉴스 없음 (threshold 미달) — 종료")
         return []
 
-    # Stage 7: 영향 체인 분석 (v2.0)
+    # Stage 7: 종목 영향 매핑 (직접 + 섹터 간접)
+    from analyzers.stock_tagger import tag_stocks
+    tag_stocks(items)
+    tagged_count = sum(1 for i in items if i.tagged_stocks)
+    if tagged_count:
+        logger.info(f"[S7 종목매핑] {tagged_count}건 종목 태깅")
+
+    # Stage 8: 영향 체인 분석 (v2.0)
     chain_count = 0
     for item in items:
         chains = analyze_impact_chains(item)
         if chains:
             chain_count += 1
     if chain_count:
-        logger.info(f"[S7 영향체인] {chain_count}건 매칭")
+        logger.info(f"[S8 영향체인] {chain_count}건 매칭")
 
-    # Stage 8: DB 저장
+    # Stage 9: LLM 요약 + BULL/BEAR 판단 (fallback: 키워드 기반)
+    try:
+        # 시장 컨텍스트 가져오기 (최근 지표)
+        from utils.db import get_connection as _get_conn
+        _conn = _get_conn()
+        _ind_rows = _conn.execute(
+            "SELECT * FROM market_indicators ORDER BY recorded_at DESC LIMIT 10"
+        ).fetchall()
+        _conn.close()
+        from models.market_indicator import MarketIndicator, IndicatorCategory
+        _indicators_for_ctx = []
+        for r in _ind_rows:
+            _indicators_for_ctx.append(MarketIndicator(
+                ticker=r["ticker"], name=r["name"],
+                category=IndicatorCategory(r["category"]) if r["category"] else IndicatorCategory.VOLATILITY,
+                current_value=r["current_value"] or 0,
+                previous_close=r["previous_close"] or 0,
+                change_pct=r["change_pct"] or 0,
+            ))
+        summarize_news(items, _indicators_for_ctx)
+    except Exception as e:
+        logger.warning(f"[S9 LLM] 요약 실패 → fallback 적용: {e}")
+        # LLM 전체 실패 시 키워드 fallback 일괄 적용
+        from analyzers.summarizer import _fallback_analyze
+        for item in items:
+            if not item.direction:
+                _fallback_analyze(item)
+
+    analyzed_count = sum(1 for i in items if i.direction)
+    logger.info(f"[S9 요약] {analyzed_count}/{len(items)}건 방향성 판정")
+
+    # Stage 10: DB 저장
     save_news_items(items)
 
-    # Stage 9: 알림 평가 + 디스패치
+    # Stage 11: 알림 평가 + 디스패치
     alerts = alert_engine.evaluate_news(items)
     if alerts:
         _dispatch_alerts(alerts)

@@ -87,18 +87,13 @@ def summarize_with_llm(
         user_msg = f"다음 뉴스를 분석해주세요:\n\n제목: {item.title}\n소스: {item.source}\n내용: {item.text_for_analysis[:500]}"
         full_prompt = f"{system}\n\n---\n\n{user_msg}"
 
-        gen_config = {
-            "max_output_tokens": 1024,
-            "temperature": 0.2,
-            "response_mime_type": "application/json",
-        }
-        # Gemini 2.5 모델의 thinking 비활성화 (JSON 잘림 방지)
-        if "2.5" in cfg.GEMINI_MODEL:
-            gen_config["thinking_config"] = {"thinking_budget": 0}
-
         response = model.generate_content(
             full_prompt,
-            generation_config=gen_config,
+            generation_config={
+                "max_output_tokens": 1024,
+                "temperature": 0.2,
+                "response_mime_type": "application/json",
+            },
         )
 
         text = response.text.strip()

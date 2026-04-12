@@ -39,7 +39,9 @@ class ImpactChain:
 CHAIN_TEMPLATES = {
     "oil_inflation": {
         "trigger_keywords": ["유가 상승", "oil price surge", "OPEC 감산", "중동 분쟁",
-                             "호르무즈", "원유 공급", "crude oil", "유가 급등"],
+                             "호르무즈", "원유 공급", "crude oil", "유가 급등",
+                             "유가", "에너지", "중동", "이란", "석유", "원유",
+                             "oil", "energy", "Iran", "Middle East", "OPEC"],
         "chain": [
             ImpactChainLink("유가", "상승", 0.9,
                            affected_sectors=["정유(+)", "항공(-)", "해운(-)"]),
@@ -52,7 +54,8 @@ CHAIN_TEMPLATES = {
     },
     "dollar_strength": {
         "trigger_keywords": ["달러 강세", "DXY 상승", "dollar strength", "강달러",
-                             "금리 인상", "rate hike", "Fed hawkish", "매파"],
+                             "금리 인상", "rate hike", "Fed hawkish", "매파",
+                             "달러", "환율", "원달러", "dollar", "금리", "FOMC", "연준"],
         "chain": [
             ImpactChainLink("달러", "강세", 0.9),
             ImpactChainLink("원달러 환율", "상승 (원화 약세)", 0.85,
@@ -65,7 +68,8 @@ CHAIN_TEMPLATES = {
     },
     "taiwan_crisis": {
         "trigger_keywords": ["대만 해협", "Taiwan strait", "중국 대만", "대만 봉쇄",
-                             "중국 군사훈련 대만"],
+                             "중국 군사훈련 대만",
+                             "대만", "Taiwan", "반도체 공급", "TSMC"],
         "chain": [
             ImpactChainLink("반도체 공급망", "리스크 급등", 0.95,
                            affected_stocks=["TSMC", "삼성전자", "SK하이닉스"],
@@ -79,7 +83,8 @@ CHAIN_TEMPLATES = {
     },
     "rate_shock": {
         "trigger_keywords": ["금리 인상", "rate hike", "FOMC 매파", "hawkish",
-                             "인플레이션 지속", "CPI 서프라이즈", "CPI surprise"],
+                             "인플레이션 지속", "CPI 서프라이즈", "CPI surprise",
+                             "금리", "기준금리", "인플레", "CPI", "Fed", "연준"],
         "chain": [
             ImpactChainLink("단기 금리", "상승", 0.9),
             ImpactChainLink("성장주", "밸류에이션 하락", 0.85,
@@ -92,7 +97,8 @@ CHAIN_TEMPLATES = {
     },
     "korea_peninsula": {
         "trigger_keywords": ["북한 미사일", "ICBM", "핵실험", "한반도 긴장",
-                             "North Korea missile", "북한 도발"],
+                             "North Korea missile", "북한 도발",
+                             "북한", "North Korea", "한반도", "Korean Peninsula"],
         "chain": [
             ImpactChainLink("코스피", "급락", 0.85,
                            affected_sectors=["코스피 전체(-)"]),
