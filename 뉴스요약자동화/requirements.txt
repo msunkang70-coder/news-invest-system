@@ -1,0 +1,40 @@
+# NIAS v2.0 Dependencies
+
+# 수집
+feedparser>=6.0.11
+requests>=2.32.0
+trafilatura>=1.12.0
+beautifulsoup4>=4.12.0
+
+# 시장지표
+yfinance>=0.2.40
+finance-datareader>=0.9.70
+
+# LLM
+google-generativeai>=0.8.0
+
+# 이메일
+google-api-python-client>=2.150.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0
+
+# 스케줄러
+apscheduler>=3.10.0
+
+# 대시보드
+streamlit>=1.40.0
+plotly>=5.24.0
+pandas>=2.2.0
+
+# 템플릿
+jinja2>=3.1.0
+
+# 유틸리티
+python-dotenv>=1.0.0
+pyyaml>=6.0.0
+
+# DART 전자공시
+opendartreader>=0.3.0
+
+# 암호화폐 심리지표
+fear-and-greed-crypto>=0.1.0

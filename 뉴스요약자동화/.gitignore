@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environment
+.env
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Gmail OAuth (보안 민감)
+credentials.json
+gmail_token.json
+token.json
+
+# API 인증 파일
+*.pem
+*.key
+
+# Data & Output (runtime generated)
+data/
+output/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cache
+url_cache.json
