@@ -193,30 +193,139 @@ class GmailNotifier:
         }
 
 
-def build_urgent_email(item) -> tuple[str, str]:
-    """긴급 속보 이메일 HTML 생성"""
-    direction_emoji = "📈" if getattr(item, "direction", None) and item.direction.value == "BULL" else "📉"
-    score = getattr(item, "impact_score", 0)
+def _clean_html(text: str) -> str:
+    """HTML 태그 및 엔티티 제거"""
+    import re
+    if not text:
+        return ""
+    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r'&\w+;', ' ', text)
+    text = re.sub(r'&#\d+;', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
 
-    subject = f"🚨 [긴급] {item.title[:60]}"
+
+def _format_time(dt) -> str:
+    """발행 시간을 한국어 포맷으로"""
+    if not dt:
+        return "시간 미상"
+    if isinstance(dt, str):
+        try:
+            from datetime import datetime as _dt
+            dt = _dt.fromisoformat(dt.replace("Z", "+00:00"))
+        except Exception:
+            return dt[:16] if len(str(dt)) > 16 else str(dt)
+    try:
+        return dt.strftime("%Y년 %m월 %d일 %H:%M")
+    except Exception:
+        return str(dt)[:16]
+
+
+def _get_keywords_str(item) -> str:
+    """매칭 키워드를 표시용 문자열로"""
+    import json
+    kws = getattr(item, "matched_keywords", [])
+    if isinstance(kws, str):
+        try:
+            kws = json.loads(kws)
+        except Exception:
+            kws = []
+    return ", ".join(kws[:5]) if kws else ""
+
+
+def _get_stocks_str(item) -> str:
+    """태깅 종목을 표시용 문자열로"""
+    import json
+    stocks = getattr(item, "tagged_stocks", [])
+    if isinstance(stocks, str):
+        try:
+            stocks = json.loads(stocks)
+        except Exception:
+            stocks = []
+    return ", ".join(stocks[:5]) if stocks else ""
+
+
+def build_urgent_email(item) -> tuple[str, str]:
+    """긴급 속보 이메일 HTML 생성 (풍부한 정보 + 출처 + 시간)"""
+    from datetime import datetime
+
+    direction = getattr(item, "direction", None)
+    d_emoji = "📈 강세" if direction and direction.value == "BULL" else "📉 약세" if direction and direction.value == "BEAR" else "⚪ 미판정"
+    score = getattr(item, "impact_score", 0)
+    title = _clean_html(getattr(item, "title", ""))
+    snippet = _clean_html(getattr(item, "snippet", ""))[:300]
+    source = getattr(item, "source", "미상")
+    source_type = getattr(item, "source_type", "RSS")
+    url = getattr(item, "url", "")
+    pub_time = _format_time(getattr(item, "published_time", None))
+    keywords = _get_keywords_str(item)
+    stocks = _get_stocks_str(item)
+    signal = getattr(item, "investment_signal", "")
+    action = getattr(item, "action_suggestion", "")
+    risk = getattr(item, "risk_factor", "")
+    chain = getattr(item, "impact_chain", "")
+    geo_level = getattr(item, "geo_level", None)
+    geo_region = getattr(item, "geo_region", "")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M KST")
+
+    # 지정학 섹션
+    geo_html = ""
+    if geo_level:
+        level_names = {1: "긴장", 2: "긴장 고조", 3: "무력 시위", 4: "무력 충돌", 5: "전면 위기"}
+        level_colors = {1: "#22c55e", 2: "#eab308", 3: "#f97316", 4: "#ef4444", 5: "#991b1b"}
+        geo_html = f"""
+        <tr style="background:#fff3cd;">
+          <td style="padding:10px; font-weight:bold;">🌍 지정학</td>
+          <td style="padding:10px; color:{level_colors.get(geo_level, '#666')}; font-weight:bold;">
+            Level {geo_level} — {level_names.get(geo_level, '?')} ({geo_region})
+          </td>
+        </tr>"""
+
+    subject = f"🚨 [{score}점] {title[:55]}"
     html = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background: #dc3545; color: white; padding: 16px; border-radius: 8px 8px 0 0;">
-        <h2 style="margin:0;">🚨 NIAS 긴급 속보</h2>
-        <p style="margin:4px 0 0;">영향도: {'★' * int(score/2)}{'☆' * (5-int(score/2))} ({score}/10)</p>
+    <div style="font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', Arial, sans-serif; max-width: 620px; margin: 0 auto; background: #fff;">
+      <div style="background: #dc3545; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+        <h2 style="margin:0; font-size:20px;">🚨 NIAS 긴급 속보 알림</h2>
+        <p style="margin:6px 0 0; opacity:0.9; font-size:13px;">알림 시각: {now} | 영향도: {'★' * int(score/2)}{'☆' * (5-int(score/2))} ({score}/10)</p>
       </div>
-      <div style="padding: 16px; border: 1px solid #ddd; border-top: none;">
-        <h3>{direction_emoji} {item.title}</h3>
-        <p><strong>소스:</strong> {item.source} | <strong>시간:</strong> {getattr(item, 'published_time', 'N/A')}</p>
-        <hr>
-        <p><strong>📌 투자 시그널:</strong> {getattr(item, 'investment_signal', 'N/A')}</p>
-        <p><strong>💡 행동 제안:</strong> {getattr(item, 'action_suggestion', 'N/A')}</p>
-        <p><strong>⚠️ 리스크:</strong> {getattr(item, 'risk_factor', 'N/A')}</p>
-        {f'<p><strong>🔗 영향 체인:</strong> {item.impact_chain}</p>' if getattr(item, 'impact_chain', '') else ''}
-        <hr>
-        <p style="color: #666; font-size: 12px;">
-          ⚠️ 본 알림은 자동 생성된 참고 정보입니다. 투자 판단의 최종 책임은 사용자에게 있습니다.<br>
-          NIAS — News-Invest Alert System v2.0
+
+      <div style="padding: 20px; border: 1px solid #ddd; border-top: none;">
+        <h3 style="margin:0 0 12px; font-size:18px; line-height:1.4;">{title}</h3>
+
+        <table style="width:100%; border-collapse:collapse; margin:12px 0; font-size:14px;">
+          <tr style="background:#f8f9fa;">
+            <td style="padding:10px; font-weight:bold; width:100px;">📰 출처</td>
+            <td style="padding:10px;">{source} ({source_type})</td>
+          </tr>
+          <tr>
+            <td style="padding:10px; font-weight:bold;">🕐 발행 시각</td>
+            <td style="padding:10px;">{pub_time}</td>
+          </tr>
+          <tr style="background:#f8f9fa;">
+            <td style="padding:10px; font-weight:bold;">📊 방향성</td>
+            <td style="padding:10px; font-weight:bold;">{d_emoji} (확신도: {getattr(item, 'confidence', 0):.0%})</td>
+          </tr>
+          {geo_html}
+          {'<tr><td style="padding:10px; font-weight:bold;">🏷️ 관련 종목</td><td style="padding:10px;">' + stocks + '</td></tr>' if stocks else ''}
+          {'<tr style="background:#f8f9fa;"><td style="padding:10px; font-weight:bold;">🔑 키워드</td><td style="padding:10px;">' + keywords + '</td></tr>' if keywords else ''}
+        </table>
+
+        {'<div style="background:#f0f4ff; padding:14px; border-radius:6px; margin:12px 0;"><strong>📰 본문 요약:</strong><br>' + snippet + '</div>' if snippet else ''}
+
+        <div style="background:#e8f5e9; padding:14px; border-radius:6px; margin:12px 0;">
+          <p style="margin:0 0 8px;"><strong>📌 투자 시그널:</strong> {signal or '분석 대기'}</p>
+          <p style="margin:0 0 8px;"><strong>💡 행동 제안:</strong> {action or '관망'}</p>
+          <p style="margin:0;"><strong>⚠️ 리스크:</strong> {risk or '추가 정보 확인 필요'}</p>
+        </div>
+
+        {f'<div style="background:#fff3cd; padding:14px; border-radius:6px; margin:12px 0;"><strong>🔗 영향 체인:</strong> {chain}</div>' if chain else ''}
+
+        {'<a href="' + url + '" style="display:inline-block; background:#dc3545; color:white; padding:12px 24px; border-radius:6px; text-decoration:none; font-weight:bold; margin:12px 0;">📄 원본 기사 보기</a>' if url and url.startswith('http') else ''}
+
+        <hr style="margin:20px 0; border:none; border-top:1px solid #eee;">
+        <p style="color: #999; font-size: 11px; line-height:1.6;">
+          ⚠️ 본 알림은 NIAS v2.0에 의해 자동 생성된 참고 정보입니다.<br>
+          투자 판단의 최종 책임은 사용자에게 있으며, 반드시 원문을 확인하시기 바랍니다.
         </p>
       </div>
     </div>
@@ -225,28 +334,58 @@ def build_urgent_email(item) -> tuple[str, str]:
 
 
 def build_indicator_email(indicator) -> tuple[str, str]:
-    """시장지표 알림 이메일 HTML 생성"""
+    """시장지표 알림 이메일 HTML (풍부한 정보 + 시간)"""
+    from datetime import datetime
+
     level_emoji = indicator.level_emoji
+    level_name = indicator.threshold_level.value
+    now = datetime.now().strftime("%Y-%m-%d %H:%M KST")
+    ts = _format_time(getattr(indicator, "timestamp", None))
+
     subject = f"{level_emoji} [{indicator.name}] {indicator.current_value} ({indicator.change_pct:+.1f}%)"
     html = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background: #fd7e14; color: white; padding: 16px; border-radius: 8px 8px 0 0;">
-        <h2 style="margin:0;">{level_emoji} NIAS 시장지표 알림</h2>
+    <div style="font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', Arial, sans-serif; max-width: 620px; margin: 0 auto;">
+      <div style="background: #fd7e14; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+        <h2 style="margin:0; font-size:20px;">{level_emoji} NIAS 시장지표 알림</h2>
+        <p style="margin:6px 0 0; opacity:0.9; font-size:13px;">알림 시각: {now}</p>
       </div>
-      <div style="padding: 16px; border: 1px solid #ddd; border-top: none;">
-        <table style="width:100%; border-collapse:collapse;">
-          <tr><td style="padding:8px; font-weight:bold;">지표</td><td>{indicator.name}</td></tr>
-          <tr><td style="padding:8px; font-weight:bold;">현재값</td><td>{indicator.current_value} ({indicator.change_pct:+.1f}%)</td></tr>
-          <tr><td style="padding:8px; font-weight:bold;">상태</td><td>{indicator.threshold_level.value}</td></tr>
+      <div style="padding: 20px; border: 1px solid #ddd; border-top: none;">
+        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+          <tr style="background:#f8f9fa;">
+            <td style="padding:10px; font-weight:bold;">📊 지표</td>
+            <td style="padding:10px; font-size:16px; font-weight:bold;">{indicator.name}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px; font-weight:bold;">💰 현재값</td>
+            <td style="padding:10px; font-size:18px; font-weight:bold;">{indicator.current_value} <span style="color:{'#22c55e' if indicator.change_pct > 0 else '#ef4444'};">({indicator.change_pct:+.1f}%)</span></td>
+          </tr>
+          <tr style="background:#f8f9fa;">
+            <td style="padding:10px; font-weight:bold;">📈 전일 종가</td>
+            <td style="padding:10px;">{indicator.previous_close}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px; font-weight:bold;">🚦 상태</td>
+            <td style="padding:10px; font-weight:bold;">{level_emoji} {level_name}</td>
+          </tr>
+          <tr style="background:#f8f9fa;">
+            <td style="padding:10px; font-weight:bold;">🕐 기준 시각</td>
+            <td style="padding:10px;">{ts}</td>
+          </tr>
         </table>
-        <hr>
-        <p><strong>임계값 돌파:</strong></p>
-        <ul>{''.join(f'<li>{b}</li>' for b in indicator.threshold_breached)}</ul>
-        {f'<p><strong>시장 영향:</strong> {indicator.market_implication}</p>' if indicator.market_implication else ''}
-        <hr>
-        <p style="color: #666; font-size: 12px;">
-          ⚠️ 본 알림은 자동 생성된 참고 정보입니다.<br>
-          NIAS v2.0
+
+        <div style="background:#fff3cd; padding:14px; border-radius:6px; margin:16px 0;">
+          <strong>⚠️ 임계값 돌파:</strong>
+          <ul style="margin:8px 0 0; padding-left:20px;">
+            {''.join(f'<li style="margin:4px 0;">{b}</li>' for b in indicator.threshold_breached)}
+          </ul>
+        </div>
+
+        {f'<div style="background:#e8f5e9; padding:14px; border-radius:6px; margin:12px 0;"><strong>📌 시장 영향:</strong> {indicator.market_implication}</div>' if indicator.market_implication else ''}
+
+        <hr style="margin:20px 0; border:none; border-top:1px solid #eee;">
+        <p style="color: #999; font-size: 11px;">
+          ⚠️ 본 알림은 NIAS v2.0에 의해 자동 생성된 참고 정보입니다.<br>
+          투자 판단의 최종 책임은 사용자에게 있습니다.
         </p>
       </div>
     </div>
