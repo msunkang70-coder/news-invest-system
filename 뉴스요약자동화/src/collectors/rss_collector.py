@@ -47,7 +47,7 @@ def _parse_single_feed(source: dict) -> List[NewsItem]:
 
 
 def collect_rss_feeds(sources: str = "all") -> List[NewsItem]:
-    """RSS 피드 수집 — 뉴스 + 지정학"""
+    """RSS 피드 수집 — 뉴스 + 지정학 + 한국어 Google News"""
     feeds = []
     if sources in ("all", "kr"):
         feeds.extend(cfg.RSS_SOURCES_KR)
@@ -55,6 +55,11 @@ def collect_rss_feeds(sources: str = "all") -> List[NewsItem]:
         feeds.extend(cfg.RSS_SOURCES_GLOBAL)
     if sources in ("all", "geopolitical"):
         feeds.extend(cfg.RSS_SOURCES_GEOPOLITICAL)
+
+    # 한국어 Google News (종목/섹터별 심화 수집)
+    if sources in ("all", "kr"):
+        for gn in getattr(cfg, "GOOGLE_NEWS_QUERIES_KR", []):
+            feeds.append(gn)
 
     all_items = []
     for source in feeds:

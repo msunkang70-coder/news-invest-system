@@ -80,6 +80,15 @@ GOOGLE_NEWS_QUERIES_GEOPOLITICAL = [
     {"name": "GN - 대만/중국", "query": "Taiwan strait China military", "region": "GLOBAL"},
 ]
 
+# 종목/섹터별 Google News (한국어) — RSS 누락 보완
+GOOGLE_NEWS_QUERIES_KR = [
+    {"name": "GN-KR 삼성전자", "url": "https://news.google.com/rss/search?q=삼성전자+실적+반도체&hl=ko&gl=KR&ceid=KR:ko", "region": "KR"},
+    {"name": "GN-KR SK하이닉스", "url": "https://news.google.com/rss/search?q=SK하이닉스+HBM+실적&hl=ko&gl=KR&ceid=KR:ko", "region": "KR"},
+    {"name": "GN-KR 코스피", "url": "https://news.google.com/rss/search?q=코스피+증시+주식시장&hl=ko&gl=KR&ceid=KR:ko", "region": "KR"},
+    {"name": "GN-KR 금리환율", "url": "https://news.google.com/rss/search?q=기준금리+환율+원달러&hl=ko&gl=KR&ceid=KR:ko", "region": "KR"},
+    {"name": "GN-KR 유가에너지", "url": "https://news.google.com/rss/search?q=유가+에너지+OPEC&hl=ko&gl=KR&ceid=KR:ko", "region": "KR"},
+]
+
 # ─────────────────────────── 키워드 필터 ───────────────────────────
 KEYWORDS_STRONG = [
     # 매크로
