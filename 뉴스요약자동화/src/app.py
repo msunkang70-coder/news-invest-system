@@ -239,7 +239,6 @@ with tab1:
     st.caption(f"총 {len(filtered)}건 (필터 적용)")
 
     if filtered:
-        # ── TOP 뉴스 카드 (펼치기 + 원문 링크) ──
         for i, item in enumerate(filtered[:20], 1):
             score = item.get("impact_score", 0)
             direction = item.get("direction")
@@ -249,56 +248,74 @@ with tab1:
             source = item.get("source", "")
             title = item.get("title", "")
             url = item.get("url", "")
+            action = item.get("action_suggestion", "")
 
-            # 헤더 라인
-            header = f"**{d_emoji} [{score}점] {title[:80]}**"
-            if url and url.startswith("http"):
-                header += f" [🔗 원문 보기]({url})"
+            # 색상 코딩
+            if direction == "BULL":
+                card_class = "card-bull"
+            elif direction == "BEAR":
+                card_class = "card-bear"
+            elif item.get("geo_level"):
+                card_class = "card-geo"
+            else:
+                card_class = "card-neutral"
 
-            with st.expander(f"{d_emoji} [{score}] {title[:70]}", expanded=(i <= 3)):
-                st.markdown(header)
-                st.caption(f"📌 소스: {source} ({item.get('source_type', 'RSS')}) {geo_tag}")
+            if score >= 8:
+                badge_class = "score-high"
+            elif score >= 6.5:
+                badge_class = "score-mid"
+            else:
+                badge_class = "score-low"
 
-                # 본문 스니펫
-                snippet = item.get("snippet", "")
-                if snippet:
-                    st.markdown(f"> {snippet[:200]}{'...' if len(snippet) > 200 else ''}")
+            action_html = f" → <b>{action}</b>" if action and action not in ("관망", "-", "") else ""
+            link_html = f' <a href="{url}" target="_blank" style="font-size:11px;">원문</a>' if url and url.startswith("http") else ""
 
-                # 분석 결과
-                col_a1, col_a2, col_a3 = st.columns(3)
-                col_a1.markdown(f"**방향:** {d_emoji} {d_label}")
-                col_a2.markdown(f"**행동 제안:** {item.get('action_suggestion', '-')}")
-                col_a3.markdown(f"**확신도:** {item.get('confidence', 0):.0%}")
+            # 카드 형태로 표시
+            st.markdown(
+                f'<div class="summary-card {card_class}">'
+                f'<span class="score-badge {badge_class}">{score}</span>'
+                f'{d_emoji} {title[:75]}{action_html}{geo_tag}'
+                f'<br><span style="color:#888;font-size:11px;">{source} ({item.get("source_type","RSS")}){link_html}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
-                signal = item.get("investment_signal", "")
-                if signal and signal != "-":
-                    st.info(f"💡 **투자 시그널:** {signal}")
+            # 상세 펼치기 (상위 5건만)
+            if i <= 5:
+                with st.expander(f"상세 보기 — {title[:40]}", expanded=False):
+                    snippet = item.get("snippet", "")
+                    if snippet:
+                        st.markdown(f"> {snippet[:200]}")
 
-                risk = item.get("risk_factor", "")
-                if risk and risk != "-":
-                    st.warning(f"⚠️ **리스크:** {risk}")
+                    col_a1, col_a2, col_a3 = st.columns(3)
+                    col_a1.markdown(f"**방향:** {d_emoji} {d_label}")
+                    col_a2.markdown(f"**행동:** {action or '관망'}")
+                    col_a3.markdown(f"**확신도:** {item.get('confidence', 0):.0%}")
 
-                chain = item.get("impact_chain", "")
-                if chain:
-                    st.success(f"🔗 **영향 체인:** {chain}")
+                    signal = item.get("investment_signal", "")
+                    if signal and "키워드 감지" not in signal:
+                        st.info(f"💡 {signal}")
 
-                # 관련 종목
-                stocks_raw = item.get("tagged_stocks", "[]")
-                if isinstance(stocks_raw, str):
-                    try:
-                        stocks = json.loads(stocks_raw)
-                    except Exception:
-                        stocks = []
-                else:
-                    stocks = stocks_raw
-                if stocks:
-                    st.markdown(f"🏷️ **관련 종목:** {', '.join(stocks)}")
+                    risk = item.get("risk_factor", "")
+                    if risk and "키워드 기반" not in risk:
+                        st.warning(f"⚠️ {risk}")
 
-                # 원문 링크 버튼
-                if url and url.startswith("http"):
-                    st.link_button("📄 원본 기사 보기", url)
+                    chain = item.get("impact_chain", "")
+                    if chain:
+                        st.success(f"🔗 {chain}")
+
+                    stocks_raw = item.get("tagged_stocks", "[]")
+                    if isinstance(stocks_raw, str):
+                        try: stocks = json.loads(stocks_raw)
+                        except: stocks = []
+                    else: stocks = stocks_raw
+                    if stocks:
+                        st.markdown(f"🏷️ {', '.join(stocks)}")
+
+                    if url and url.startswith("http"):
+                        st.link_button("📄 원본 기사", url)
     else:
-        st.info("조건에 맞는 뉴스가 없습니다. 필터를 조정해 보세요.")
+        st.info("조건에 맞는 뉴스가 없습니다.")
 
 # ═══════════════ 탭 2: 종목 시그널 ═══════════════
 with tab2:
@@ -360,7 +377,25 @@ with tab2:
         fig.update_layout(yaxis_title="시그널 점수", legend_title="방향")
         st.plotly_chart(fig, use_container_width=True)
 
-        st.dataframe(df_stock, use_container_width=True, hide_index=True)
+        # 종목별 카드 (색상 코딩)
+        for _, row in df_stock.iterrows():
+            net = row["순점수"]
+            if net >= 1.5:
+                card_class = "card-bull"
+            elif net <= -1.5:
+                card_class = "card-bear"
+            else:
+                card_class = "card-neutral"
+
+            st.markdown(
+                f'<div class="summary-card {card_class}" style="padding:10px;">'
+                f'<b>{row["종목"]}</b> &nbsp; {row["행동 제안"]} &nbsp; '
+                f'<span style="color:#22c55e;">▲{row["강세 점수"]}</span> / '
+                f'<span style="color:#ef4444;">▼{row["약세 점수"]}</span> &nbsp; '
+                f'순점수: <b>{net:+.1f}</b> &nbsp; 뉴스 {row["뉴스 수"]}건'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
         # 종목별 상세
         for name, s in sorted(stock_scores.items(), key=lambda x: abs(x[1]["bull"] - x[1]["bear"]), reverse=True)[:5]:
@@ -455,17 +490,34 @@ with tab4:
             name = level_name.get(level, "?")
             color = level_color.get(level, "gray")
 
-            with st.expander(f":{color}[**{bar} L{level} {region}**] — {name} ({data['count']}건)", expanded=(level >= 3)):
+            level_bg = {1: "#f0fdf4", 2: "#fffbeb", 3: "#fff7ed", 4: "#fef2f2", 5: "#fef2f2"}
+            level_border = {1: "#22c55e", 2: "#eab308", 3: "#f97316", 4: "#ef4444", 5: "#991b1b"}
+
+            # 지역 카드
+            st.markdown(
+                f'<div style="background:{level_bg.get(level,"#f8f8f8")}; border-left:5px solid {level_border.get(level,"#ccc")}; '
+                f'padding:12px; border-radius:8px; margin-bottom:8px;">'
+                f'<b style="font-size:15px;">{bar} L{level} {region}</b> — {name} ({data["count"]}건)'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+            with st.expander(f"L{level} {region} 뉴스 상세", expanded=(level >= 4)):
                 for n in sorted(data["news"], key=lambda x: x.get("impact_score", 0), reverse=True)[:5]:
                     score = n.get("impact_score", 0)
                     title = n.get("title", "")
                     url = n.get("url", "")
                     conflict = n.get("geo_conflict_type", "")
 
-                    link = f" [🔗 원문]({url})" if url and url.startswith("http") else ""
-                    st.markdown(f"- **[{score}점]** {title[:70]}{link}")
-                    if conflict:
-                        st.caption(f"  분쟁 유형: {conflict}")
+                    badge = "score-high" if score >= 8 else "score-mid" if score >= 6.5 else "score-low"
+                    link = f' <a href="{url}" target="_blank" style="font-size:11px;">원문</a>' if url and url.startswith("http") else ""
+
+                    st.markdown(
+                        f'<span class="score-badge {badge}">{score}</span> {title[:65]}'
+                        f'{"  <span style=color:#888;font-size:11px;>" + conflict + "</span>" if conflict else ""}'
+                        f'{link}',
+                        unsafe_allow_html=True,
+                    )
 
                 chain = n.get("impact_chain", "")
                 if chain:
