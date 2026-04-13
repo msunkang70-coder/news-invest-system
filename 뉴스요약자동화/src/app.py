@@ -29,125 +29,113 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; }
-html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; background: #0D1117 !important; color: #E6EDF3; }
-h1,h2,h3 { font-family: 'Inter', sans-serif !important; color: #E6EDF3 !important; }
-.block-container { padding: 2rem 2.5rem 3rem; max-width: 1060px; background: #0D1117 !important; }
-[data-testid="stAppViewContainer"] { background: #0D1117 !important; }
-[data-testid="stHeader"] { background: #0D1117 !important; }
+html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; background: #111318 !important; color: #D1D5DB; }
+h1,h2,h3 { font-family: 'Inter', sans-serif !important; color: #F3F4F6 !important; }
+.block-container { padding: 2rem 2.5rem 3rem; max-width: 1060px; background: #111318 !important; }
+[data-testid="stAppViewContainer"] { background: #111318 !important; }
+[data-testid="stHeader"] { background: #111318 !important; }
 
 /* ── verdict ── */
-.vd { padding: 16px 22px; border-radius: 16px; font-size: 15px; font-weight: 600; margin-bottom: 28px; }
-.vd-g { background: #0D2818; color: #4ADE80; }
-.vd-r { background: #2D0F0F; color: #FCA5A5; }
-.vd-y { background: #2D2006; color: #FCD34D; }
+.vd { padding: 14px 20px; border-radius: 12px; font-size: 14px; font-weight: 600; margin-bottom: 24px; }
+.vd-g { background: rgba(34,197,94,0.1); color: #4ADE80; border: 1px solid rgba(34,197,94,0.15); }
+.vd-r { background: rgba(239,68,68,0.1); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.15); }
+.vd-y { background: rgba(234,179,8,0.1); color: #FDE68A; border: 1px solid rgba(234,179,8,0.15); }
 
-/* ── hero kpi ── */
-.hero {
-    background: #161B22; border-radius: 20px; padding: 36px 40px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-    margin-bottom: 18px;
-    transition: all 0.25s ease;
-}
-.hero:hover { box-shadow: 0 12px 48px rgba(0,0,0,0.5); transform: translateY(-2px); }
-.hero-label { font-size: 13px; color: #8B949E; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 8px; }
-.hero-val { font-size: 48px; font-weight: 800; color: #FFFFFF; letter-spacing: -1.5px; line-height: 1; }
-.hero-delta { font-size: 18px; font-weight: 700; margin-top: 10px; }
-
-/* ── secondary kpi grid ── */
-.kgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 14px; margin-bottom: 28px; }
+/* ── kpi grid (동일 크기) ── */
+.kgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 12px; margin-bottom: 24px; }
 .kcard {
-    background: #161B22; border-radius: 16px; padding: 20px 18px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-    transition: all 0.25s ease;
+    background: #1A1D24; border-radius: 14px; padding: 18px 16px;
+    border: 1px solid #25292F;
+    transition: all 0.2s ease;
 }
-.kcard:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.45); transform: translateY(-3px); }
-.kl { font-size: 10.5px; color: #8B949E; font-weight: 600; letter-spacing: 0.4px; margin-bottom: 8px; }
-.kv { font-size: 22px; font-weight: 800; color: #E6EDF3; letter-spacing: -0.4px; }
-.kd { font-size: 12px; font-weight: 600; margin-top: 6px; }
+.kcard:hover { border-color: #3B3F47; transform: translateY(-2px); }
+.kl { font-size: 10.5px; color: #7D8590; font-weight: 600; letter-spacing: 0.4px; margin-bottom: 6px; }
+.kv { font-size: 22px; font-weight: 800; color: #F3F4F6; letter-spacing: -0.4px; }
+.kd { font-size: 12px; font-weight: 600; margin-top: 4px; }
 
-/* ── news hero ── */
-.nf {
-    background: #161B22; border-radius: 20px; padding: 30px 32px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-    margin-bottom: 14px;
-    transition: all 0.25s ease;
+/* ── news (통일 카드 — hero/regular 구분 제거) ── */
+.nc {
+    background: #1A1D24; border-radius: 12px; padding: 16px 20px;
+    border: 1px solid #25292F;
+    margin-bottom: 8px; transition: all 0.2s ease;
 }
-.nf:hover { box-shadow: 0 12px 48px rgba(0,0,0,0.5); transform: translateY(-2px); }
-.nf-title { font-size: 18px; font-weight: 700; color: #E6EDF3; line-height: 1.5; margin-bottom: 12px; }
-.nf-sig { font-size: 14px; color: #8B949E; line-height: 1.6; margin-bottom: 12px; }
-.nf-meta { font-size: 12px; color: #484F58; }
-.nf-meta a { color: #58A6FF; text-decoration: none; font-weight: 500; }
-.nf-meta a:hover { color: #79C0FF; }
+.nc:hover { border-color: #3B3F47; transform: translateY(-1px); }
+.nc-t { font-size: 14px; font-weight: 600; color: #E5E7EB; line-height: 1.5; margin-bottom: 6px; }
+.nc-m { font-size: 12px; color: #7D8590; display: flex; align-items: center; gap: 8px; }
+.nc-m a { color: #6CA4E0; text-decoration: none; font-weight: 500; }
+.nc-m a:hover { color: #93C5FD; }
 
-/* ── news regular ── */
-.nr {
-    background: #161B22; border-radius: 14px; padding: 18px 22px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-    margin-bottom: 10px; transition: all 0.25s ease;
-}
-.nr:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.4); transform: translateY(-2px); }
-.nr-t { font-size: 14px; font-weight: 600; color: #E6EDF3; line-height: 1.5; margin-bottom: 6px; }
-.nr-m { font-size: 11.5px; color: #484F58; }
-.nr-m a { color: #58A6FF; text-decoration: none; font-weight: 500; }
-.nr-m a:hover { color: #79C0FF; }
+/* ── 시간 뱃지 (opacity 대신 명시적 뱃지) ── */
+.t-new { display:inline-block; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:600; background:rgba(34,197,94,0.15); color:#4ADE80; }
+.t-old { display:inline-block; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:600; background:rgba(107,114,128,0.15); color:#6B7280; }
 
 /* ── pill ── */
-.p { display: inline-block; padding: 3px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; margin-right: 6px; }
-.p-s { background: #21262D; color: #8B949E; }
-.p-a { background: #0D2240; color: #58A6FF; }
+.p { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; margin-right: 5px; }
+.p-s { background: #25292F; color: #9CA3AF; }
+.p-a { background: rgba(59,130,246,0.15); color: #6CA4E0; }
 
 /* ── stock ── */
 .sc {
-    background: #161B22; border-radius: 16px; padding: 20px 22px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    background: #1A1D24; border-radius: 12px; padding: 16px 20px;
+    border: 1px solid #25292F;
     display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 10px; transition: all 0.25s ease;
+    margin-bottom: 8px; transition: all 0.2s ease;
 }
-.sc:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.4); transform: translateY(-2px); }
-.sc-n { font-weight: 700; font-size: 15px; color: #E6EDF3; }
-.sc-bar { height: 6px; border-radius: 3px; background: #21262D; flex: 1; margin: 0 18px; }
-.sc-fill { height: 6px; border-radius: 3px; }
+.sc:hover { border-color: #3B3F47; transform: translateY(-1px); }
+.sc-n { font-weight: 700; font-size: 14px; color: #E5E7EB; }
+.sc-bar { height: 4px; border-radius: 2px; background: #25292F; flex: 1; margin: 0 16px; }
+.sc-fill { height: 4px; border-radius: 2px; }
 
 /* ── indicator ── */
 .ir {
-    background: #161B22; border-radius: 16px; padding: 18px 22px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    background: #1A1D24; border-radius: 12px; padding: 14px 20px;
+    border: 1px solid #25292F;
     display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 10px; transition: all 0.25s ease;
+    margin-bottom: 8px; transition: all 0.2s ease;
 }
-.ir:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.4); transform: translateY(-2px); }
-.ir.alert-row { box-shadow: 0 2px 10px rgba(220,38,38,0.2); }
-.ir-n { font-size: 13px; color: #8B949E; font-weight: 500; }
-.ir-v { font-size: 22px; font-weight: 800; color: #E6EDF3; letter-spacing: -0.4px; }
+.ir:hover { border-color: #3B3F47; transform: translateY(-1px); }
+.ir.alert-row { border-color: rgba(239,68,68,0.3); }
+.ir-n { font-size: 13px; color: #9CA3AF; font-weight: 500; }
+.ir-v { font-size: 20px; font-weight: 800; color: #F3F4F6; letter-spacing: -0.3px; }
 
 /* ── geo ── */
 .gc {
-    background: #161B22; border-radius: 16px; padding: 22px 26px; border-left: 4px solid #30363D;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-    margin-bottom: 12px; transition: all 0.25s ease;
+    background: #1A1D24; border-radius: 12px; padding: 18px 22px; border-left: 3px solid #25292F;
+    border-top: 1px solid #25292F; border-right: 1px solid #25292F; border-bottom: 1px solid #25292F;
+    margin-bottom: 10px; transition: all 0.2s ease;
 }
-.gc:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.4); transform: translateY(-2px); }
+.gc:hover { border-color: #3B3F47; transform: translateY(-1px); }
 .gc.g4 { border-left-color: #F87171; }
 .gc.g3 { border-left-color: #FBBF24; }
-.gc-t { font-weight: 700; font-size: 15px; color: #E6EDF3; }
-.gc-s { font-size: 13px; color: #8B949E; margin-top: 8px; line-height: 1.8; }
-.gc-s a { color: #58A6FF; text-decoration: none; font-weight: 500; }
-.gc-s a:hover { color: #79C0FF; }
+.gc-t { font-weight: 700; font-size: 14px; color: #E5E7EB; }
+.gc-s { font-size: 12px; color: #7D8590; margin-top: 6px; line-height: 1.7; }
+.gc-s a { color: #6CA4E0; text-decoration: none; }
+.gc-s a:hover { color: #93C5FD; }
 
 /* ── util ── */
-.cap { font-size: 12px; color: #484F58; font-weight: 500; margin-bottom: 24px; }
-.stale { opacity: 0.25; }
-.old { opacity: 0.45; }
-.gap { height: 28px; }
+.cap { font-size: 11.5px; color: #6B7280; font-weight: 500; margin-bottom: 20px; }
+.gap { height: 24px; }
 
-/* ── streamlit overrides (dark) ── */
+/* ── tab 디자인 (탭 모양) ── */
 .stDeployButton, #MainMenu, footer { display: none !important; visibility: hidden !important; }
-.stTabs [data-baseweb="tab-list"] { background: transparent !important; }
-.stTabs [data-baseweb="tab"] { font-size: 14px; font-weight: 600; color: #484F58; }
-.stTabs [aria-selected="true"] { color: #E6EDF3 !important; }
+.stTabs [data-baseweb="tab-list"] {
+    background: #1A1D24 !important; border-radius: 10px; padding: 4px;
+    border: 1px solid #25292F; gap: 0 !important;
+}
+.stTabs [data-baseweb="tab"] {
+    font-size: 13px; font-weight: 600; color: #6B7280;
+    border-radius: 8px; padding: 8px 16px !important;
+    background: transparent !important;
+}
+.stTabs [aria-selected="true"] {
+    color: #F3F4F6 !important; background: #25292F !important;
+    border-radius: 8px;
+}
+.stTabs [data-baseweb="tab-highlight"] { display: none !important; }
+.stTabs [data-baseweb="tab-border"] { display: none !important; }
 div[data-testid="stExpander"] { border: none !important; background: transparent !important; }
-[data-testid="stMetricValue"] { color: #E6EDF3 !important; }
-[data-testid="stMetricLabel"] { color: #8B949E !important; }
+[data-testid="stMetricValue"] { color: #F3F4F6 !important; }
+[data-testid="stMetricLabel"] { color: #7D8590 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -216,41 +204,36 @@ with t1:
     fl = [n for n in news if n.get("impact_score", 0) >= ms]
     if df != "전체": fl = [n for n in fl if n.get("direction") == df]
 
-    # Hero news (top 1)
-    if fl:
-        top = fl[0]
-        sc = top.get("impact_score", 0)
-        sig = top.get("investment_signal", "")
-        act = top.get("action_suggestion", "")
-        url = top.get("url", "")
-        age = relative_time(top.get("published_time", ""))
-        act_p = f'<span class="p p-a">{act}</span>' if act and act != "관망" else ""
-        link = f'<a href="{url}" target="_blank">원문 보기 →</a>' if url and url.startswith("http") else ""
-        sig_html = f'<div class="nf-sig">{sig}</div>' if sig and "키워드 감지" not in sig else ""
-
-        st.markdown(f'''
-        <div class="nf">
-            <div class="nf-title"><span class="p p-s">{sc}</span> {top["title"][:75]} {act_p}</div>
-            {sig_html}
-            <div class="nf-meta">{top.get("source","")} · {age} {link}</div>
-        </div>''', unsafe_allow_html=True)
-
-    # Rest
-    for item in fl[1:20]:
+    # 통일 카드 (hero/regular 구분 제거, opacity 페이드 제거)
+    for idx, item in enumerate(fl[:25]):
         sc = item.get("impact_score", 0)
-        d = item.get("direction", "")
         url = item.get("url", "")
-        age = relative_time(item.get("published_time", ""))
-        fade = "stale" if is_stale(item.get("published_time"), 48) else "old" if is_stale(item.get("published_time"), 24) else ""
+        pub = item.get("published_time", "")
+        age = relative_time(pub)
         act = item.get("action_suggestion", "")
+        signal = item.get("investment_signal", "")
+
         act_p = f'<span class="p p-a">{act}</span>' if act and act != "관망" else ""
         link = f'<a href="{url}" target="_blank">원문↗</a>' if url and url.startswith("http") else ""
 
+        # 시간 뱃지 (opacity 대신 명시적)
+        if is_stale(pub, 24):
+            time_badge = f'<span class="t-old">{age}</span>'
+        else:
+            time_badge = f'<span class="t-new">{age}</span>' if age else ""
+
         st.markdown(f'''
-        <div class="nr {fade}">
-            <div class="nr-t"><span class="p p-s">{sc}</span> {item["title"][:70]} {act_p}</div>
-            <div class="nr-m">{item.get("source","")} · {age} {link}</div>
+        <div class="nc">
+            <div class="nc-t"><span class="p p-s">{sc}</span> {item["title"][:70]} {act_p}</div>
+            <div class="nc-m"><span>{item.get("source","")}</span> {time_badge} {link}</div>
         </div>''', unsafe_allow_html=True)
+
+        # 상위 3건만 펼치기
+        if idx < 3 and signal and "키워드 감지" not in signal:
+            with st.expander("시그널", expanded=False):
+                st.markdown(f"💡 {signal}")
+                if url and url.startswith("http"):
+                    st.link_button("원문", url)
 
     if not fl:
         st.info("뉴스 없음")
