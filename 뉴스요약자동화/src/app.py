@@ -81,18 +81,139 @@ krw_val = latest_indicators.get("KRW/USD", {}).get("current_value", "-")
 wti_val = latest_indicators.get("CL=F", {}).get("current_value", "-")
 tnx_val = latest_indicators.get("^TNX", {}).get("current_value", "-")
 
+# ─── 커스텀 CSS ───
+st.markdown("""
+<style>
+.summary-card {
+    padding: 16px; border-radius: 10px; margin-bottom: 8px;
+    border-left: 5px solid; font-size: 14px;
+}
+.card-bull { background: #f0fdf4; border-color: #22c55e; }
+.card-bear { background: #fef2f2; border-color: #ef4444; }
+.card-geo  { background: #fffbeb; border-color: #f59e0b; }
+.card-neutral { background: #f8fafc; border-color: #94a3b8; }
+.score-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 12px;
+    font-weight: bold; font-size: 12px; color: white; margin-right: 6px;
+}
+.score-high { background: #ef4444; }
+.score-mid  { background: #f59e0b; }
+.score-low  { background: #94a3b8; }
+</style>
+""", unsafe_allow_html=True)
+
 # ─── 헤더 ───
 direction_emoji = "📈" if "강세" in market_direction else "📉"
-st.markdown(f"## {direction_emoji} NIAS v2.0 — 실시간 뉴스 투자 알람 시스템")
+st.markdown(f"## {direction_emoji} NIAS v2.0 — 실시간 투자 알람")
 
-col_h1, col_h2, col_h3, col_h4, col_h5 = st.columns(5)
-col_h1.metric("시장 방향", market_direction, f"확신도 {confidence:.0%}")
-col_h2.metric("VIX 공포지수", vix_val)
-col_h3.metric("원달러 환율", krw_val)
-col_h4.metric("WTI 유가", wti_val)
-col_h5.metric("미국 10년물", tnx_val)
+# ═══ 요약 대시보드 (첫 화면, 한눈에 파악) ═══
 
-st.caption(f"뉴스 {stats['news']}건 | 지표 {stats['indicators']}건 | BULL {bull_count} vs BEAR {bear_count} vs 미판정 {none_count} | 갱신: {datetime.now().strftime('%H:%M')}")
+# 행 1: 시장 판단 + 핵심 지표 6개
+col_m, col_v, col_fx, col_oil, col_bond, col_fg = st.columns(6)
+
+# 시장 방향
+dir_color = "🟢" if "강세" in market_direction else "🔴"
+col_m.metric("시장 방향", f"{dir_color} {market_direction}", f"BULL {bull_count} / BEAR {bear_count}")
+
+# VIX
+vix_ind = latest_indicators.get("^VIX", {})
+vix_chg = vix_ind.get("change_pct", 0)
+col_v.metric("VIX 공포지수", vix_val, f"{vix_chg:+.1f}%" if vix_chg else None,
+             delta_color="inverse")
+
+# 환율
+krw_ind = latest_indicators.get("KRW/USD", latest_indicators.get("KRW/USD_ECOS", {}))
+krw_chg = krw_ind.get("change_pct", 0)
+col_fx.metric("원달러", krw_val, f"{krw_chg:+.1f}%" if krw_chg else None,
+              delta_color="inverse")
+
+# 유가
+wti_ind = latest_indicators.get("CL=F", {})
+wti_chg = wti_ind.get("change_pct", 0)
+col_oil.metric("WTI 유가", wti_val, f"{wti_chg:+.1f}%" if wti_chg else None)
+
+# 국채
+tnx_ind = latest_indicators.get("^TNX", {})
+tnx_chg = tnx_ind.get("change_pct", 0)
+col_bond.metric("US 10Y", tnx_val, f"{tnx_chg:+.1f}%" if tnx_chg else None,
+                delta_color="inverse")
+
+# 공포/탐욕
+fg_ind = latest_indicators.get("CRYPTO_FG", {})
+fg_val = fg_ind.get("current_value", "-")
+col_fg.metric("Crypto F&G", fg_val)
+
+# 행 2: TOP 3 뉴스 카드 + 지정학 요약
+st.markdown("---")
+
+top3 = sorted(news_data, key=lambda x: x.get("impact_score", 0), reverse=True)[:3]
+geo_news_all = [n for n in news_data if n.get("geo_level")]
+
+col_news, col_geo = st.columns([3, 1])
+
+with col_news:
+    st.markdown("##### 🏆 핵심 뉴스 TOP 3")
+    for n in top3:
+        score = n.get("impact_score", 0)
+        direction = n.get("direction", "")
+        title = n.get("title", "")[:65]
+        action = n.get("action_suggestion", "")
+        source = n.get("source", "")
+        url = n.get("url", "")
+
+        # 카드 스타일
+        if direction == "BULL":
+            card_class = "card-bull"
+            d_icon = "📈"
+        elif direction == "BEAR":
+            card_class = "card-bear"
+            d_icon = "📉"
+        else:
+            card_class = "card-neutral"
+            d_icon = "⚪"
+
+        # 점수 뱃지
+        if score >= 8:
+            badge_class = "score-high"
+        elif score >= 6.5:
+            badge_class = "score-mid"
+        else:
+            badge_class = "score-low"
+
+        link = f' <a href="{url}" target="_blank" style="font-size:11px;">원문</a>' if url and url.startswith("http") else ""
+        action_text = f' → <b>{action}</b>' if action and action != "관망" else ""
+
+        st.markdown(
+            f'<div class="summary-card {card_class}">'
+            f'<span class="score-badge {badge_class}">{score}</span>'
+            f'{d_icon} {title}{action_text}'
+            f'<br><span style="color:#888;font-size:11px;">{source}{link}</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+with col_geo:
+    st.markdown("##### 🌍 지정학 리스크")
+    if geo_news_all:
+        region_max = {}
+        for n in geo_news_all:
+            r = n.get("geo_region", "기타")
+            region_max[r] = max(region_max.get(r, 0), n.get("geo_level", 0))
+
+        level_bar = {1: "■□□□□", 2: "■■□□□", 3: "■■■□□", 4: "■■■■□", 5: "■■■■■"}
+        level_color = {1: "#22c55e", 2: "#eab308", 3: "#f97316", 4: "#ef4444", 5: "#991b1b"}
+
+        for region, level in sorted(region_max.items(), key=lambda x: x[1], reverse=True):
+            bar = level_bar.get(level, "?")
+            color = level_color.get(level, "#666")
+            st.markdown(
+                f'<span style="color:{color};font-weight:bold;font-size:13px;">{bar} L{level} {region}</span>',
+                unsafe_allow_html=True,
+            )
+    else:
+        st.caption("분류된 지정학 뉴스 없음")
+
+st.caption(f"뉴스 {stats['news']}건 | 지표 {stats['indicators']}건 | 갱신: {datetime.now().strftime('%H:%M')}")
 st.divider()
 
 # ─── 탭 ───
