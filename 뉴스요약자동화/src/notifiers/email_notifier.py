@@ -338,97 +338,99 @@ def _build_indicator_assessment(indicator) -> str:
     ticker = indicator.ticker
     val = indicator.current_value
     chg = indicator.change_pct
-    level = indicator.threshold_level.value
 
-    # ── 지표별 룰 기반 평가 (Analyzer/DB 수정 없이 템플릿 내 연산) ──
     if ticker == "^VIX":
         if val >= 30:
-            risk_grade, persistence = "높음", "VIX 30+ 구간은 평균 5-10 거래일 지속"
-            s1 = "단기: 변동성 확대 지속, 추가 하락 가능 (VIX 35-40 터치 가능)"
-            s2 = "기본: 1-2주 내 25 이하로 회귀 (과거 패턴 기준 70% 확률)"
-            s3 = "최악: 시스템 리스크 확대 시 40+ 장기 체류 (2020년 3월 사례)"
-            short_action = "위험자산 비중 20-30% 축소, 현금/단기채 확대"
-            mid_action = "VIX 25 하회 시 분할 재진입 검토, 풋옵션 헷지 유지"
+            risk_grade = "상위 5% 수준 (패닉 구간, 평균 5-10 거래일 체류)"
+            s1 = f"▸ VIX 35 이상 → 추가 급락 가능, 헷지 비용 급등"
+            s2 = f"▸ VIX 25 하회 → 1-2주 내 안정 복귀 (과거 70% 확률)"
+            s3 = f"▸ VIX 40 돌파 → 시스템 리스크, 현금 비중 극대화"
+            short_action = "위험자산 비중 20-30% 즉시 축소. 추격 매도 금지"
+            mid_action = "VIX 25 하회 확인 전까지 신규 매수 보류"
         elif val >= 25:
-            risk_grade, persistence = "중간", "VIX 25-30 구간은 평균 3-7 거래일"
-            s1 = "단기: 불안 심리 확대, VIX 30 돌파 가능성 존재"
-            s2 = "기본: 이벤트 소화 후 20 이하로 안정 (1-2주)"
-            s3 = "리스크: 지정학/경제 이벤트 겹칠 시 30+ 급등"
-            short_action = "신규 매수 보류, 기존 포지션 스톱로스 점검"
+            risk_grade = "상위 20% 수준 (경계 구간, 평균 3-7 거래일)"
+            s1 = f"▸ VIX 30 돌파 → 공포 구간 전환, 매도 압력 가속"
+            s2 = f"▸ VIX 20 하회 → 이벤트 소화 후 안정 (1-2주)"
+            s3 = f"▸ VIX 25 유지 → 횡보, 방향 탐색 구간"
+            short_action = "신규 매수 보류. 기존 포지션 스톱로스 점검"
             mid_action = "VIX 20 하회 확인 후 정상 매매 재개"
         else:
-            risk_grade, persistence = "낮음", "안정 구간"
-            s1 = "단기: 시장 안정, 변동성 낮은 상태 유지 전망"
-            s2 = "기본: 횡보 또는 점진적 상승 가능"
-            s3 = "주의: 돌발 이벤트 시 급등 가능 — 모니터링 유지"
-            short_action = "정상 매매 가능, 변동성 매도 전략 유효"
+            risk_grade = "정상 범위 (안정 구간)"
+            s1 = f"▸ VIX 20 이상 → 단기 불안 징후, 관찰 필요"
+            s2 = f"▸ VIX 15 이하 → 과도한 안심, 변동성 매도 전략 유효"
+            s3 = f"▸ 돌발 이벤트 시 25+ 급등 가능 — 헷지 준비"
+            short_action = "정상 매매 가능. 변동성 매도 전략 유효"
             mid_action = "추세 추종 전략 유지"
 
     elif ticker in ("KRW/USD",):
         if val >= 1450:
-            risk_grade, persistence = "높음", "1,450원+ 구간은 외환당국 구두개입 빈도 증가"
-            s1 = "단기: 1,500원 심리적 저항 테스트 가능, 당국 개입 경계"
-            s2 = "기본: 중동 리스크 완화 시 1,400원대 초반 복귀 (2-4주)"
-            s3 = "최악: 글로벌 달러 강세 + 지정학 악화 시 1,500원 돌파"
-            short_action = "수출주(삼성전자, 현대차) 환차익 기대 — 보유 유지"
-            mid_action = "내수주/여행주 비중 축소, 달러 자산 환헷지 검토"
+            risk_grade = "상위 10% 수준 (당국 개입 경계, 외국인 유출 가속)"
+            s1 = f"▸ 1,500원 돌파 → 심리적 저항 붕괴, 추가 약세"
+            s2 = f"▸ 1,400원 하회 → 중동 리스크 완화 시 2-4주 내 복귀"
+            s3 = f"▸ 1,450원 유지 → 수출주 환차익 지속, 내수주 부담"
+            short_action = "수출주(삼성전자, 현대차) 보유 유지. 내수주 신규 매수 보류"
+            mid_action = "1,400원 하회 확인 시 내수주/여행주 비중 확대"
         elif val >= 1400:
-            risk_grade, persistence = "중간", "1,400원대는 경계 구간"
-            s1 = "단기: 원화 약세 압력 지속, 외국인 매도세 주시"
-            s2 = "기본: 1,350-1,400 박스권 복귀 전망"
-            s3 = "리스크: 미중 갈등 심화 시 1,450 재도전"
-            short_action = "외국인 순매도 종목 회피, 수출주 비중 확대"
-            mid_action = "환율 안정 확인 후 내수주 재진입"
+            risk_grade = "상위 25% 수준 (경계 구간)"
+            s1 = f"▸ 1,450원 돌파 → 외국인 순매도 가속, 코스피 하방 압력"
+            s2 = f"▸ 1,350원 하회 → 안정 구간 복귀"
+            s3 = f"▸ 1,400원대 횡보 → 수출주 유리, 외국인 수급 부담"
+            short_action = "외국인 순매도 종목 매수 보류. 수출주 비중 확대"
+            mid_action = "환율 1,380원 하회 확인 후 내수주 재진입"
         else:
-            risk_grade, persistence = "낮음", "안정 구간"
-            s1, s2, s3 = "단기: 안정적", "기본: 박스권 유지", "주의: 대외 변수 모니터링"
-            short_action = "정상 매매"
+            risk_grade = "정상 범위"
+            s1 = f"▸ 1,400원 돌파 → 경계 구간 진입, 수출주 부각"
+            s2 = f"▸ 1,300원 하회 → 원화 강세, 내수주 유리"
+            s3 = f"▸ 현 수준 유지 → 환율 중립, 종목 선별 장세"
+            short_action = "정상 매매 가능"
             mid_action = "현 전략 유지"
 
     elif ticker in ("CL=F", "BZ=F"):
         abs_chg = abs(chg)
         if abs_chg >= 8:
-            risk_grade, persistence = "높음", f"일변동 {abs_chg:.1f}%는 극단적 — OPEC/지정학 이벤트 가능"
-            s1 = f"단기: 추가 {'상승' if chg > 0 else '하락'} 모멘텀, 변동성 2-3일 지속"
-            s2 = "기본: 이벤트 소화 후 $5-10 되돌림"
-            s3 = f"최악: {'$120+ 돌파 시 인플레 재점화' if chg > 0 else '$80 이하 시 산유국 감산 대응'}"
-            short_action = f"{'정유주/에너지 ETF 단기 매수' if chg > 0 else '항공/해운주 반등 매수 검토'}"
-            mid_action = f"{'운송비 상승 관련 인플레 헷지' if chg > 0 else '에너지주 저점 분할매수'}"
+            risk_grade = f"상위 3% 수준 (일변동 {abs_chg:.1f}%, OPEC/지정학 이벤트급)"
+            s1 = f"▸ ${val+5:.0f} 돌파 → {'인플레 재점화, 금리 인상 기대 강화' if chg > 0 else '산유국 감산 대응, 반등 가능'}"
+            s2 = f"▸ ${val-10:.0f} 복귀 → 이벤트 소화 후 되돌림 (3-5일)"
+            s3 = f"▸ $120+ → 경기침체 우려 본격화" if chg > 0 else f"▸ $80 이하 → 에너지주 구조적 하락"
+            short_action = f"{'에너지 ETF 단기 매수 가능. 추격 매수 금지' if chg > 0 else '항공/해운주 반등 매수 검토. 에너지주 매수 보류'}"
+            mid_action = f"{'유가 $100 이상 유지 시 인플레 자산 비중 축소' if chg > 0 else '유가 $85 안정 확인 후 에너지주 분할 매수'}"
         elif abs_chg >= 5:
-            risk_grade, persistence = "중간", f"일변동 {abs_chg:.1f}%는 주의 구간"
-            s1 = f"단기: {'상승세 지속 가능' if chg > 0 else '하락세 지속 가능'}"
-            s2 = "기본: 1주 내 평균 회귀"
-            s3 = "주의: OPEC 회의/재고 데이터에 민감"
-            short_action = "에너지 섹터 모니터링 강화"
+            risk_grade = f"상위 15% 수준 (일변동 {abs_chg:.1f}%, 주의 구간)"
+            s1 = f"▸ ${val+5:.0f} 이상 → {'상승 모멘텀 지속' if chg > 0 else '추가 하락 모멘텀'}"
+            s2 = f"▸ ${val-5:.0f} 이하 → 평균 회귀 (1주 이내)"
+            s3 = f"▸ OPEC 회의/재고 데이터에 민감 — 이벤트 전 관망"
+            short_action = f"에너지 관련 종목 단기 대응. 추격 {'매수' if chg > 0 else '매도'} 금지"
             mid_action = "유가 방향 확인 후 포지션 조정"
         else:
-            risk_grade, persistence = "낮음", "정상 범위"
-            s1, s2, s3 = "단기: 안정적", "기본: 현 수준 유지", "주의: OPEC/재고 이벤트"
+            risk_grade = "정상 범위"
+            s1 = f"▸ ${val+10:.0f} 돌파 → 인플레 우려 부각"
+            s2 = f"▸ ${val-10:.0f} 하회 → 에너지주 하방 압력"
+            s3 = f"▸ 현 수준 유지 → 에너지 섹터 중립"
             short_action = "현 전략 유지"
             mid_action = "현 전략 유지"
 
     elif ticker == "^TNX":
         if val >= 5.0:
-            risk_grade, persistence = "높음", "10년물 5%+는 2007년 이후 최고 수준"
-            s1 = "단기: 주식 밸류에이션 압박 심화, 성장주 하락 압력"
-            s2 = "기본: Fed 개입 기대로 4.5% 수준 회귀 (1-2개월)"
-            s3 = "최악: 재정적자 우려로 5.5%+ 장기 체류"
-            short_action = "성장주/기술주 비중 축소, 단기채/현금 확대"
-            mid_action = "금리 피크 확인 후 장기채 매수 기회 탐색"
+            risk_grade = "상위 1% 수준 (2007년 이후 최고, 밸류에이션 압박)"
+            s1 = f"▸ {val+0.3:.1f}% 돌파 → 성장주 추가 하락, 부동산 직격"
+            s2 = f"▸ 4.5% 하회 → Fed 개입 기대, 1-2개월 내 안정"
+            s3 = f"▸ 5.5%+ 장기 체류 → 재정적자 우려, 구조적 고금리"
+            short_action = "성장주/기술주 비중 즉시 축소. 단기채/현금 확대"
+            mid_action = "4.5% 하회 확인 시 장기채 매수 기회 탐색"
         else:
-            risk_grade, persistence = "중간", "금리 변동 주시"
-            s1 = f"단기: {'상승 압력' if chg > 0 else '하락 안정'}"
-            s2 = "기본: Fed 정책 방향에 따라 결정"
-            s3 = "주의: CPI/고용 데이터 발표일 변동성 확대"
-            short_action = "금리 민감 섹터(부동산, 유틸리티) 모니터링"
-            mid_action = "듀레이션 중립 유지"
+            risk_grade = f"상위 30% 수준 (금리 변동 구간)"
+            s1 = f"▸ {val+0.2:.1f}% 이상 → 성장주 밸류에이션 하방 압력"
+            s2 = f"▸ {val-0.3:.1f}% 이하 → 금리 안정, 성장주 반등"
+            s3 = f"▸ CPI/고용 발표일 전후 변동성 확대 예상"
+            short_action = "금리 민감 섹터(부동산, 유틸리티) 매수 보류"
+            mid_action = "듀레이션 중립 유지. Fed 발언 모니터링"
 
     else:
-        risk_grade, persistence = "보통", f"{indicator.name} 변동 관찰 필요"
-        s1 = f"단기: {indicator.name} {'상승' if chg > 0 else '하락'} 추세 확인"
-        s2 = "기본: 추세 지속 여부 1-2일 관찰"
-        s3 = "주의: 관련 이벤트 발생 시 변동 확대 가능"
-        short_action = "관련 섹터 모니터링"
+        risk_grade = f"{indicator.name} 변동 관찰 필요"
+        s1 = f"▸ {indicator.name} {'상승' if chg > 0 else '하락'} 추세 확인 필요"
+        s2 = f"▸ 추세 지속 여부 1-2일 관찰"
+        s3 = f"▸ 관련 이벤트 발생 시 변동 확대 가능"
+        short_action = "관련 섹터 모니터링. 신규 진입 보류"
         mid_action = "추세 확인 후 판단"
 
     return f"""
@@ -437,9 +439,7 @@ def _build_indicator_assessment(indicator) -> str:
             📋 정량 평가
           </div>
           <div style="padding:14px; font-size:13px;">
-            <span style="background:{'#fecaca' if risk_grade=='높음' else '#fef3c7' if risk_grade=='중간' else '#d1fae5'}; padding:3px 10px; border-radius:4px; font-weight:bold;">위험도: {risk_grade}</span>
-            &nbsp;&nbsp;
-            <span style="color:#64748b;">{persistence}</span>
+            <span style="color:#334155; font-weight:bold;">위험도:</span> {risk_grade}
           </div>
         </div>
 
@@ -448,9 +448,7 @@ def _build_indicator_assessment(indicator) -> str:
             🔮 시나리오
           </div>
           <div style="padding:14px; font-size:13px; line-height:1.8;">
-            <div style="margin-bottom:6px;">▸ {s1}</div>
-            <div style="margin-bottom:6px;">▸ {s2}</div>
-            <div>▸ {s3}</div>
+            {s1}<br>{s2}<br>{s3}
           </div>
         </div>
 
@@ -471,6 +469,34 @@ def _build_indicator_assessment(indicator) -> str:
         </div>"""
 
 
+def _indicator_oneliner(indicator) -> str:
+    """제목/프리뷰용 한줄 해석 (subject | 뒤, preheader)"""
+    ticker = indicator.ticker
+    val = indicator.current_value
+    chg = indicator.change_pct
+
+    if ticker == "^VIX":
+        if val >= 30: return "변동성 패닉 구간. 방어 우선, 매수 보류"
+        if val >= 25: return "변동성 확대. 추격매수보다 방어 우선"
+        return "변동성 안정. 정상 매매 가능"
+    elif ticker == "KRW/USD":
+        if val >= 1450: return f"1450 상회 지속. 수출주 유리, 지수는 부담"
+        if val >= 1400: return "경계 구간. 외국인 수급 부담 지속"
+        return "안정 구간. 환율 중립"
+    elif ticker in ("CL=F", "BZ=F"):
+        if abs(chg) >= 5:
+            return f"유가 {'급등' if chg > 0 else '급락'}으로 {'인플레 재자극 우려' if chg > 0 else '에너지주 하방 압력'}"
+        return "유가 안정. 에너지 섹터 중립"
+    elif ticker == "^TNX":
+        if val >= 5.0: return "10년물 5%+. 성장주 밸류에이션 압박 심화"
+        return f"금리 {val:.1f}%. Fed 방향 주시"
+    elif ticker == "^GSPC":
+        if abs(chg) >= 2: return f"S&P500 {'급등' if chg > 0 else '급락'}. 변동성 확대 구간"
+        return "S&P500 정상 범위"
+    else:
+        return f"{indicator.name} {chg:+.1f}% 변동. 모니터링 필요"
+
+
 def build_indicator_email(indicator) -> tuple[str, str]:
     """시장지표 알림 이메일 HTML (풍부한 정보 + 시간)"""
     from datetime import datetime
@@ -480,15 +506,23 @@ def build_indicator_email(indicator) -> tuple[str, str]:
     now = datetime.now().strftime("%Y-%m-%d %H:%M KST")
     ts = _format_time(getattr(indicator, "timestamp", None))
 
-    # 추가 블록 생성 (기존 코드 변경 없이 append)
     assessment_html = _build_indicator_assessment(indicator)
+    oneliner = _indicator_oneliner(indicator)
 
-    subject = f"{level_emoji} [{indicator.name}] {indicator.current_value} ({indicator.change_pct:+.1f}%)"
+    # 제목: [이모지][지표명] 현재값 (변동률) | 한줄 의미
+    level_str = indicator.threshold_level.value
+    subj_emoji = {"위험": "🔴", "극단": "🔴", "경고": "🟠", "주의": "🟠"}.get(level_str, "🟢")
+    subject = f"{subj_emoji} {indicator.name} {indicator.current_value} ({indicator.change_pct:+.1f}%) | {oneliner}"
+
+    # 프리뷰 (Gmail 받은편지함 미리보기)
+    preheader = f'<span style="display:none!important;opacity:0;color:transparent;height:0;width:0;max-height:0;max-width:0;overflow:hidden;">{oneliner}</span>'
+
     html = f"""
+    {preheader}
     <div style="font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', Arial, sans-serif; max-width: 620px; margin: 0 auto;">
       <div style="background: #fd7e14; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-        <h2 style="margin:0; font-size:20px;">{level_emoji} NIAS 시장지표 알림</h2>
-        <p style="margin:6px 0 0; opacity:0.9; font-size:13px;">알림 시각: {now}</p>
+        <h2 style="margin:0; font-size:20px;">{level_emoji} {indicator.name}</h2>
+        <p style="margin:6px 0 0; opacity:0.9; font-size:13px;">{now}</p>
       </div>
       <div style="padding: 20px; border: 1px solid #ddd; border-top: none;">
         <table style="width:100%; border-collapse:collapse; font-size:14px;">
