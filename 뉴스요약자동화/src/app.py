@@ -29,121 +29,125 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; }
-html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; background: #F5F7FA; }
-h1,h2,h3 { font-family: 'Inter', sans-serif !important; color: #111827; }
-.block-container { padding: 2rem 2.5rem 3rem; max-width: 1060px; }
+html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; background: #0D1117 !important; color: #E6EDF3; }
+h1,h2,h3 { font-family: 'Inter', sans-serif !important; color: #E6EDF3 !important; }
+.block-container { padding: 2rem 2.5rem 3rem; max-width: 1060px; background: #0D1117 !important; }
+[data-testid="stAppViewContainer"] { background: #0D1117 !important; }
+[data-testid="stHeader"] { background: #0D1117 !important; }
 
 /* ── verdict ── */
-.vd { padding: 16px 22px; border-radius: 20px; font-size: 15px; font-weight: 600; margin-bottom: 28px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.04); }
-.vd-g { background: #F0FAF3; color: #15803D; }
-.vd-r { background: #FEF1F1; color: #B91C1C; }
-.vd-y { background: #FDF9ED; color: #854D0E; }
+.vd { padding: 16px 22px; border-radius: 16px; font-size: 15px; font-weight: 600; margin-bottom: 28px; }
+.vd-g { background: #0D2818; color: #4ADE80; }
+.vd-r { background: #2D0F0F; color: #FCA5A5; }
+.vd-y { background: #2D2006; color: #FCD34D; }
 
-/* ── hero kpi (dominant — scaled up) ── */
+/* ── hero kpi ── */
 .hero {
-    background: #FFFFFF; border-radius: 24px; padding: 36px 40px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+    background: #161B22; border-radius: 20px; padding: 36px 40px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
     margin-bottom: 18px;
     transition: all 0.25s ease;
 }
-.hero:hover { box-shadow: 0 12px 40px rgba(0,0,0,0.1); transform: translateY(-2px); }
-.hero-label { font-size: 13px; color: #6B7280; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 8px; }
-.hero-val { font-size: 48px; font-weight: 800; color: #111827; letter-spacing: -1.5px; line-height: 1; }
+.hero:hover { box-shadow: 0 12px 48px rgba(0,0,0,0.5); transform: translateY(-2px); }
+.hero-label { font-size: 13px; color: #8B949E; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 8px; }
+.hero-val { font-size: 48px; font-weight: 800; color: #FFFFFF; letter-spacing: -1.5px; line-height: 1; }
 .hero-delta { font-size: 18px; font-weight: 700; margin-top: 10px; }
 
 /* ── secondary kpi grid ── */
 .kgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 14px; margin-bottom: 28px; }
 .kcard {
-    background: #FFFFFF; border-radius: 20px; padding: 20px 18px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+    background: #161B22; border-radius: 16px; padding: 20px 18px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
     transition: all 0.25s ease;
 }
-.kcard:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.09); transform: translateY(-3px); }
-.kl { font-size: 10.5px; color: #6B7280; font-weight: 600; letter-spacing: 0.4px; margin-bottom: 8px; }
-.kv { font-size: 22px; font-weight: 800; color: #111827; letter-spacing: -0.4px; }
+.kcard:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.45); transform: translateY(-3px); }
+.kl { font-size: 10.5px; color: #8B949E; font-weight: 600; letter-spacing: 0.4px; margin-bottom: 8px; }
+.kv { font-size: 22px; font-weight: 800; color: #E6EDF3; letter-spacing: -0.4px; }
 .kd { font-size: 12px; font-weight: 600; margin-top: 6px; }
 
 /* ── news hero ── */
 .nf {
-    background: #FFFFFF; border-radius: 24px; padding: 30px 32px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+    background: #161B22; border-radius: 20px; padding: 30px 32px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
     margin-bottom: 14px;
     transition: all 0.25s ease;
 }
-.nf:hover { box-shadow: 0 12px 40px rgba(0,0,0,0.1); transform: translateY(-2px); }
-.nf-title { font-size: 18px; font-weight: 700; color: #111827; line-height: 1.5; margin-bottom: 12px; }
-.nf-sig { font-size: 14px; color: #374151; line-height: 1.6; margin-bottom: 12px; }
-.nf-meta { font-size: 12px; color: #9CA3AF; }
-.nf-meta a { color: #6B7280; text-decoration: none; font-weight: 500; }
-.nf-meta a:hover { color: #111827; }
+.nf:hover { box-shadow: 0 12px 48px rgba(0,0,0,0.5); transform: translateY(-2px); }
+.nf-title { font-size: 18px; font-weight: 700; color: #E6EDF3; line-height: 1.5; margin-bottom: 12px; }
+.nf-sig { font-size: 14px; color: #8B949E; line-height: 1.6; margin-bottom: 12px; }
+.nf-meta { font-size: 12px; color: #484F58; }
+.nf-meta a { color: #58A6FF; text-decoration: none; font-weight: 500; }
+.nf-meta a:hover { color: #79C0FF; }
 
 /* ── news regular ── */
 .nr {
-    background: #FFFFFF; border-radius: 20px; padding: 18px 22px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+    background: #161B22; border-radius: 14px; padding: 18px 22px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
     margin-bottom: 10px; transition: all 0.25s ease;
 }
-.nr:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.09); transform: translateY(-2px); }
-.nr-t { font-size: 14px; font-weight: 600; color: #111827; line-height: 1.5; margin-bottom: 6px; }
-.nr-m { font-size: 11.5px; color: #9CA3AF; }
-.nr-m a { color: #6B7280; text-decoration: none; font-weight: 500; }
-.nr-m a:hover { color: #111827; }
+.nr:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.4); transform: translateY(-2px); }
+.nr-t { font-size: 14px; font-weight: 600; color: #E6EDF3; line-height: 1.5; margin-bottom: 6px; }
+.nr-m { font-size: 11.5px; color: #484F58; }
+.nr-m a { color: #58A6FF; text-decoration: none; font-weight: 500; }
+.nr-m a:hover { color: #79C0FF; }
 
-/* ── pill (subtle) ── */
+/* ── pill ── */
 .p { display: inline-block; padding: 3px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; margin-right: 6px; }
-.p-s { background: #F3F4F6; color: #4B5563; }
-.p-a { background: #EFF6FF; color: #1D4ED8; }
+.p-s { background: #21262D; color: #8B949E; }
+.p-a { background: #0D2240; color: #58A6FF; }
 
 /* ── stock ── */
 .sc {
-    background: #FFFFFF; border-radius: 20px; padding: 20px 22px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+    background: #161B22; border-radius: 16px; padding: 20px 22px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 10px; transition: all 0.25s ease;
 }
-.sc:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.09); transform: translateY(-2px); }
-.sc-n { font-weight: 700; font-size: 15px; color: #111827; }
-.sc-bar { height: 6px; border-radius: 3px; background: #F3F4F6; flex: 1; margin: 0 18px; }
+.sc:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.4); transform: translateY(-2px); }
+.sc-n { font-weight: 700; font-size: 15px; color: #E6EDF3; }
+.sc-bar { height: 6px; border-radius: 3px; background: #21262D; flex: 1; margin: 0 18px; }
 .sc-fill { height: 6px; border-radius: 3px; }
 
 /* ── indicator ── */
 .ir {
-    background: #FFFFFF; border-radius: 20px; padding: 18px 22px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+    background: #161B22; border-radius: 16px; padding: 18px 22px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 10px; transition: all 0.25s ease;
 }
-.ir:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.09); transform: translateY(-2px); }
-.ir.alert-row { box-shadow: 0 4px 16px rgba(220,38,38,0.08); }
-.ir-n { font-size: 13px; color: #374151; font-weight: 500; }
-.ir-v { font-size: 22px; font-weight: 800; color: #111827; letter-spacing: -0.4px; }
+.ir:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.4); transform: translateY(-2px); }
+.ir.alert-row { box-shadow: 0 2px 10px rgba(220,38,38,0.2); }
+.ir-n { font-size: 13px; color: #8B949E; font-weight: 500; }
+.ir-v { font-size: 22px; font-weight: 800; color: #E6EDF3; letter-spacing: -0.4px; }
 
 /* ── geo ── */
 .gc {
-    background: #FFFFFF; border-radius: 20px; padding: 22px 26px; border-left: 4px solid #E5E7EB;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+    background: #161B22; border-radius: 16px; padding: 22px 26px; border-left: 4px solid #30363D;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
     margin-bottom: 12px; transition: all 0.25s ease;
 }
-.gc:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.09); transform: translateY(-2px); }
-.gc.g4 { border-left-color: #EF4444; }
-.gc.g3 { border-left-color: #F59E0B; }
-.gc-t { font-weight: 700; font-size: 15px; color: #111827; }
-.gc-s { font-size: 13px; color: #6B7280; margin-top: 8px; line-height: 1.8; }
-.gc-s a { color: #6B7280; text-decoration: none; font-weight: 500; }
-.gc-s a:hover { color: #111827; }
+.gc:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.4); transform: translateY(-2px); }
+.gc.g4 { border-left-color: #F87171; }
+.gc.g3 { border-left-color: #FBBF24; }
+.gc-t { font-weight: 700; font-size: 15px; color: #E6EDF3; }
+.gc-s { font-size: 13px; color: #8B949E; margin-top: 8px; line-height: 1.8; }
+.gc-s a { color: #58A6FF; text-decoration: none; font-weight: 500; }
+.gc-s a:hover { color: #79C0FF; }
 
 /* ── util ── */
-.cap { font-size: 12px; color: #9CA3AF; font-weight: 500; margin-bottom: 24px; }
-.stale { opacity: 0.3; }
-.old { opacity: 0.5; }
+.cap { font-size: 12px; color: #484F58; font-weight: 500; margin-bottom: 24px; }
+.stale { opacity: 0.25; }
+.old { opacity: 0.45; }
 .gap { height: 28px; }
 
-/* ── streamlit ── */
+/* ── streamlit overrides (dark) ── */
 .stDeployButton, #MainMenu, footer { display: none !important; visibility: hidden !important; }
-.stTabs [data-baseweb="tab"] { font-size: 14px; font-weight: 600; color: #9CA3AF; }
-.stTabs [aria-selected="true"] { color: #111827 !important; }
+.stTabs [data-baseweb="tab-list"] { background: transparent !important; }
+.stTabs [data-baseweb="tab"] { font-size: 14px; font-weight: 600; color: #484F58; }
+.stTabs [aria-selected="true"] { color: #E6EDF3 !important; }
 div[data-testid="stExpander"] { border: none !important; background: transparent !important; }
+[data-testid="stMetricValue"] { color: #E6EDF3 !important; }
+[data-testid="stMetricLabel"] { color: #8B949E !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -181,28 +185,18 @@ vc = "vd-y" if gc >= 3 and is_bull else "vd-g" if is_bull else "vd-r"
 vt = ("강세 우위 · 추세 매수 유효" + (" · 지정학 리스크 병존" if gc >= 3 else "")) if is_bull else ("약세 흐름 · 신규 매수 보류" + (" · 지정학 확대" if gc >= 3 else ""))
 st.markdown(f'<div class="vd {vc}">{"📈" if is_bull else "📉"} {vt}</div>', unsafe_allow_html=True)
 
-# ── Hero KPI (most critical indicator) ──
-hero = next((i for i in inds if i.get("threshold_level") in ("위험", "극단")), inds[0] if inds else None)
-if hero:
-    hc = hero.get("change_pct", 0) or 0
-    dc = "#16A34A" if hc > 0 else "#DC2626" if hc < 0 else "#B0B8C1"
-    ds = "+" if hc > 0 else ""
-    st.markdown(f'''
-    <div class="hero">
-        <div class="hero-label">{hero["name"]}</div>
-        <div class="hero-val">{hero["current_value"]}</div>
-        <div class="hero-delta" style="color:{dc};">{ds}{hc:.1f}%</div>
-    </div>''', unsafe_allow_html=True)
-
-# ── Secondary KPIs ──
-others = [i for i in inds if i != hero][:7]
-if others:
+# ── KPI Grid (모든 지표 동일 크기) ──
+if inds:
     h = '<div class="kgrid">'
-    for i in others:
+    for i in inds[:8]:
         c = i.get("change_pct", 0) or 0
-        dc = "#16A34A" if c > 0.01 else "#DC2626" if c < -0.01 else "#B0B8C1"
+        lv = i.get("threshold_level", "정상")
+        dc = "#3FB950" if c > 0.01 else "#F85149" if c < -0.01 else "#484F58"
         ds = "+" if c > 0 else ""
-        h += f'<div class="kcard"><div class="kl">{i["name"]}</div><div class="kv">{i["current_value"]}</div><div class="kd" style="color:{dc};">{ds}{c:.1f}%</div></div>'
+        alert = lv in ("위험", "극단", "경고")
+        # 위험 지표만 약간 다른 배경
+        bg = "#1C1210" if alert else "#161B22"
+        h += f'<div class="kcard" style="background:{bg};"><div class="kl">{i["name"]}</div><div class="kv">{i["current_value"]}</div><div class="kd" style="color:{dc};">{ds}{c:.1f}%</div></div>'
     h += '</div>'
     st.markdown(h, unsafe_allow_html=True)
 
@@ -317,8 +311,8 @@ with t3:
         if hist:
             df = pd.DataFrame(hist)
             fig = px.line(df, x="recorded_at", y="current_value")
-            fig.update_traces(line_color="#191F28", line_width=2.5)
-            fig.update_layout(height=200, margin=dict(l=0,r=0,t=8,b=0), xaxis=dict(showgrid=False,title=""), yaxis=dict(showgrid=True,gridcolor="#F2F4F6",title=""), plot_bgcolor="#FAFBFC", paper_bgcolor="#FAFBFC")
+            fig.update_traces(line_color="#58A6FF", line_width=2.5)
+            fig.update_layout(height=200, margin=dict(l=0,r=0,t=8,b=0), xaxis=dict(showgrid=False,title=""), yaxis=dict(showgrid=True,gridcolor="#21262D",title=""), plot_bgcolor="#0D1117", paper_bgcolor="#0D1117", font_color="#8B949E")
             st.plotly_chart(fig, use_container_width=True)
 
 # ── GEOPOLITICS ──
@@ -368,8 +362,8 @@ with t5:
         if kc:
             kdf = pd.DataFrame(kc.most_common(10), columns=["키워드", "빈도"])
             fig = px.bar(kdf, x="키워드", y="빈도")
-            fig.update_traces(marker_color="#191F28")
-            fig.update_layout(height=200, margin=dict(l=0,r=0,t=8,b=0), xaxis=dict(title=""), yaxis=dict(title="",gridcolor="#F2F4F6"), plot_bgcolor="#FAFBFC", paper_bgcolor="#FAFBFC")
+            fig.update_traces(marker_color="#58A6FF")
+            fig.update_layout(height=200, margin=dict(l=0,r=0,t=8,b=0), xaxis=dict(title=""), yaxis=dict(title="",gridcolor="#21262D"), plot_bgcolor="#0D1117", paper_bgcolor="#0D1117", font_color="#8B949E")
             st.plotly_chart(fig, use_container_width=True)
 
         c1, c2 = st.columns(2)
@@ -381,4 +375,4 @@ with t5:
 
 # ── FOOTER ──
 st.markdown('<div style="height:60px"></div>', unsafe_allow_html=True)
-st.markdown('<p style="text-align:center;font-size:10px;color:#D1D5DB;">NIAS v2.0 · 투자 판단의 최종 책임은 사용자에게 있습니다</p>', unsafe_allow_html=True)
+st.markdown('<p style="text-align:center;font-size:10px;color:#30363D;">NIAS v2.0 · 투자 판단의 최종 책임은 사용자에게 있습니다</p>', unsafe_allow_html=True)
