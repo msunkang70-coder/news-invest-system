@@ -141,14 +141,39 @@ div[data-testid="stExpander"] { border: none !important; background: transparent
 label, .stSlider label, .stSelectbox label { color: #D1D5DB !important; font-size: 13px !important; font-weight: 600 !important; }
 .stSlider [data-testid="stTickBarMin"], .stSlider [data-testid="stTickBarMax"] { color: #9CA3AF !important; }
 
-/* 셀렉트박스 파스텔톤 */
-[data-baseweb="select"] { background: #1E2330 !important; border: 1px solid #334155 !important; border-radius: 10px !important; }
-[data-baseweb="select"] span, [data-baseweb="select"] div { color: #E2E8F0 !important; }
+/* 셀렉트박스 + 모든 폼 요소 다크 스타일 */
+[data-baseweb="select"],
+[data-baseweb="select"] > div,
+.stSelectbox > div > div,
+.stSelectbox [data-baseweb="select"] > div {
+    background: #1E2330 !important; background-color: #1E2330 !important;
+    border: 1px solid #334155 !important; border-radius: 10px !important;
+    color: #E2E8F0 !important;
+}
+[data-baseweb="select"] span,
+[data-baseweb="select"] div,
+[data-baseweb="select"] p,
+.stSelectbox span,
+.stSelectbox div[data-baseweb] span {
+    color: #E2E8F0 !important;
+}
 [data-baseweb="select"] svg { fill: #94A3B8 !important; }
-[data-baseweb="popover"] { background: #1E2330 !important; border: 1px solid #334155 !important; border-radius: 10px !important; }
-[data-baseweb="popover"] li { color: #E2E8F0 !important; padding: 10px 14px !important; }
-[data-baseweb="popover"] li:hover { background: #2D3748 !important; }
-[data-baseweb="input"] { background: #1E2330 !important; color: #E2E8F0 !important; border-color: #334155 !important; }
+[data-baseweb="popover"],
+[data-baseweb="popover"] ul,
+[data-baseweb="menu"] { background: #1E2330 !important; border: 1px solid #334155 !important; border-radius: 10px !important; }
+[data-baseweb="popover"] li,
+[data-baseweb="menu"] li,
+[role="option"] { color: #E2E8F0 !important; background: transparent !important; }
+[data-baseweb="popover"] li:hover,
+[role="option"]:hover,
+[aria-selected="true"][role="option"] { background: #2D3748 !important; }
+[data-baseweb="input"],
+.stTextInput input { background: #1E2330 !important; color: #E2E8F0 !important; border-color: #334155 !important; }
+
+/* 슬라이더 다크 */
+.stSlider [data-baseweb="slider"] div { background: #334155 !important; }
+.stSlider [role="slider"] { background: #6CA4E0 !important; border-color: #6CA4E0 !important; }
+[data-testid="stThumbValue"] { color: #E2E8F0 !important; }
 </style>
 """, unsafe_allow_html=True)
 
