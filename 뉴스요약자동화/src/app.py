@@ -168,7 +168,12 @@ label, .stSlider label, .stSelectbox label { color: #D1D5DB !important; font-siz
 [role="option"]:hover,
 [aria-selected="true"][role="option"] { background: #2D3748 !important; }
 [data-baseweb="input"],
-.stTextInput input { background: #1E2330 !important; color: #E2E8F0 !important; border-color: #334155 !important; }
+.stTextInput input,
+.stNumberInput input,
+.stNumberInput [data-baseweb="input"],
+.stNumberInput div[data-baseweb] { background: #1E2330 !important; color: #E2E8F0 !important; border-color: #334155 !important; }
+.stNumberInput button { background: #1E2330 !important; color: #E2E8F0 !important; border-color: #334155 !important; }
+.stNumberInput button:hover { background: #2D3748 !important; }
 
 /* 슬라이더 다크 */
 .stSlider [data-baseweb="slider"] div { background: #334155 !important; }
@@ -315,11 +320,12 @@ with t1:
             cards_html = '<div style="color:#4B5563;font-size:12px;padding:8px 0;">해당 뉴스 없음</div>'
 
         st.markdown(
-            f'<div style="border:1px solid #25292F;border-radius:14px;padding:18px;margin-bottom:14px;">'
-            f'<div style="font-size:14px;font-weight:700;color:#D1D5DB;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #1E2228;">'
+            f'<div style="border:1px solid #25292F;border-radius:14px;overflow:hidden;margin-bottom:14px;">'
+            f'<div style="background:#1A1F2A;padding:12px 18px;font-size:14px;font-weight:700;color:#D1D5DB;border-bottom:1px solid #25292F;">'
             f'{cat_name} <span style="color:#6B7280;font-weight:400;font-size:12px;margin-left:6px;">{count}건</span></div>'
+            f'<div style="padding:14px 18px;">'
             f'{cards_html}'
-            f'</div>',
+            f'</div></div>',
             unsafe_allow_html=True,
         )
         # 3건 초과분은 Streamlit expander (HTML 밖)
