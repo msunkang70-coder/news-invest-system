@@ -29,14 +29,7 @@ st.set_page_config(
 # ─── 데이터 로드 ───
 @st.cache_data(ttl=300)
 def load_news(hours=48):
-    from utils.translator import translate_title, translate_to_kr
-    news = get_recent_news(hours=hours, limit=200)
-    for n in news:
-        n["title"] = translate_title(n.get("title", ""))
-        snippet = n.get("snippet", "")
-        if snippet:
-            n["snippet"] = translate_to_kr(snippet[:200])
-    return news
+    return get_recent_news(hours=hours, limit=200)
 
 @st.cache_data(ttl=300)
 def load_all_indicators():

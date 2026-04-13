@@ -14,6 +14,39 @@ logger = logging.getLogger(__name__)
 
 # 캐시: 동일 텍스트 반복 번역 방지 (최대 500건)
 _cache: dict[str, str] = {}
+_disk_cache_path = None
+_disk_loaded = False
+
+
+def _load_disk_cache():
+    """디스크 캐시 로드 (최초 1회)"""
+    global _cache, _disk_cache_path, _disk_loaded
+    if _disk_loaded:
+        return
+    _disk_loaded = True
+    try:
+        import config as cfg
+        _disk_cache_path = cfg.DATA_DIR / "translation_cache.json"
+        if _disk_cache_path.exists():
+            import json
+            with open(_disk_cache_path, "r", encoding="utf-8") as f:
+                _cache.update(json.load(f))
+    except Exception:
+        pass
+
+
+def _save_disk_cache():
+    """디스크 캐시 저장"""
+    if not _disk_cache_path or len(_cache) < 1:
+        return
+    try:
+        import json
+        with open(_disk_cache_path, "w", encoding="utf-8") as f:
+            # 최근 2000건만 유지
+            items = list(_cache.items())[-2000:]
+            json.dump(dict(items), f, ensure_ascii=False)
+    except Exception:
+        pass
 
 
 def _is_korean(text: str) -> bool:
@@ -29,7 +62,9 @@ def translate_to_kr(text: str) -> str:
     if not text or _is_korean(text):
         return text
 
-    # 캐시 확인
+    _load_disk_cache()
+
+    # 캐시 확인 (메모리 + 디스크)
     cache_key = text[:100]
     if cache_key in _cache:
         return _cache[cache_key]
@@ -39,6 +74,7 @@ def translate_to_kr(text: str) -> str:
         translated = GoogleTranslator(source='en', target='ko').translate(text[:500])
         if translated:
             _cache[cache_key] = translated
+            _save_disk_cache()
             return translated
     except Exception as e:
         logger.debug(f"[번역] 실패 → 원문 유지: {e}")
