@@ -481,4 +481,5 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 | 04/13 | `ef15f59` | 일일 리포트 자동 발송 구현 (run_daily_report), Markdown 저장 | main.py |
 | 04/13 | `a9ee09d` | CSV 내보내기 + 주간 성과 리포트 + 대시보드 히스토리 탭 | export.py, weekly_report.py, app.py |
 | 04/13 | `7acea6c` | Google News URL 원문 링크 수정 (/rss/articles → /articles) | rss_collector.py |
-| 04/13 | 현재 | 60sec_econ_signal ECOS API 이식 + 시그널 해석 매트릭스 (CPI/금리/수출/경상수지) | ecos_collector.py, email_notifier.py, main.py |
+| 04/13 | `cffd17e` | 60sec_econ_signal ECOS API 이식 + 시그널 해석 매트릭스 (CPI/금리/수출/경상수지) | ecos_collector.py, email_notifier.py, main.py |
+| 04/13 | 현재 | DART+FRED+ECOS 3개 API 키 활성화. DART 32건, FRED 5건, ECOS 4건 실데이터 확인 | .env, dart_collector.py, market_indicator.py |

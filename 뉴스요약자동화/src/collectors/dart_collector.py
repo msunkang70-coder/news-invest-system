@@ -40,9 +40,9 @@ def collect_dart_disclosures(date: str = None) -> List[NewsItem]:
         return []
 
     try:
-        import opendartreader as odr
+        import OpenDartReader
 
-        dart = odr.OpenDartReader(cfg.DART_API_KEY)
+        dart = OpenDartReader(cfg.DART_API_KEY)
 
         if date is None:
             date = datetime.now().strftime("%Y-%m-%d")
