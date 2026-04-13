@@ -83,12 +83,12 @@ def notify_urgent_news(item: NewsItem) -> bool:
     blocks = [
         {
             "type": "header",
-            "text": {"type": "plain_text", "text": f":rotating_light: [{score}점] {item.title[:50]}", "emoji": True}
+            "text": {"type": "plain_text", "text": f":rotating_light: [{score}점] ({pub_time}) {item.title[:45]}", "emoji": True}
         },
         {
             "type": "context",
             "elements": [
-                {"type": "mrkdwn", "text": f":clock1: 발행 {pub_time} | 알림 {_now_str()} | 출처: {item.source}"}
+                {"type": "mrkdwn", "text": f":clock1: *발행 {pub_time}* | 알림 {_now_str()} | 출처: {item.source}"}
             ]
         },
         {
@@ -126,7 +126,7 @@ def notify_urgent_news(item: NewsItem) -> bool:
             "elements": [{"type": "button", "text": {"type": "plain_text", "text": ":newspaper: 원문 보기", "emoji": True}, "url": url}]
         })
 
-    return send_slack(f":rotating_light: [{score}점] {item.title[:50]}", blocks)
+    return send_slack(f":rotating_light: [{score}점] ({pub_time}) {item.title[:45]}", blocks)
 
 
 def notify_indicator_alert(indicator: MarketIndicator) -> bool:
@@ -237,12 +237,12 @@ def notify_geopolitical(item: NewsItem) -> bool:
     blocks = [
         {
             "type": "header",
-            "text": {"type": "plain_text", "text": f":earth_asia: [L{level}] {region} — {item.title[:40]}", "emoji": True}
+            "text": {"type": "plain_text", "text": f":earth_asia: [L{level}] ({pub_time}) {region} — {item.title[:35]}", "emoji": True}
         },
         {
             "type": "context",
             "elements": [
-                {"type": "mrkdwn", "text": f":clock1: 발행 {pub_time} | 알림 {_now_str()} | 출처: {item.source}"}
+                {"type": "mrkdwn", "text": f":clock1: *발행 {pub_time}* | 알림 {_now_str()} | 출처: {item.source}"}
             ]
         },
         {
@@ -271,4 +271,4 @@ def notify_geopolitical(item: NewsItem) -> bool:
             "elements": [{"type": "button", "text": {"type": "plain_text", "text": ":newspaper: 원문 보기", "emoji": True}, "url": url}]
         })
 
-    return send_slack(f":earth_asia: [L{level}] {region} {item.title[:40]}", blocks)
+    return send_slack(f":earth_asia: [L{level}] ({pub_time}) {region} {item.title[:35]}", blocks)

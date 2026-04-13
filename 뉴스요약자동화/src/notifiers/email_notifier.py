@@ -281,9 +281,20 @@ def build_urgent_email(item) -> tuple[str, str]:
           </td>
         </tr>"""
 
-    # 제목: 이모지 + 제목 + 한줄 행동
+    # 제목: 이모지 + 발행일 + 제목 + 행동
+    pub_short = ""
+    pt = getattr(item, "published_time", None)
+    if pt:
+        try:
+            if isinstance(pt, str):
+                from datetime import datetime as _dt2
+                pt = _dt2.fromisoformat(pt)
+            pub_short = pt.strftime("%m/%d")
+        except Exception:
+            pass
     action_hint = action if action and action != "관망" else signal[:25] if signal else ""
-    subject = f"🚨 [{score}점] {title[:45]}" + (f" | {action_hint}" if action_hint else "")
+    date_prefix = f"({pub_short}) " if pub_short else ""
+    subject = f"🚨 [{score}점] {date_prefix}{title[:40]}" + (f" | {action_hint}" if action_hint else "")
 
     # preheader: Gmail 미리보기
     preheader_text = signal[:60] if signal and signal != "분석 대기" else snippet[:60] if snippet else title[:60]
