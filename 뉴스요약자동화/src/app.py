@@ -44,14 +44,14 @@ h1,h2,h3 { font-family: 'Inter', sans-serif !important; color: #F3F4F6 !importan
 /* ── kpi grid (동일 크기) ── */
 .kgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
 .kcard {
-    background: #1A1D24; border-radius: 14px; padding: 18px 16px;
+    background: #1A1D24; border-radius: 14px; padding: 22px 20px;
     border: 1px solid #25292F;
     transition: all 0.2s ease;
 }
 .kcard:hover { border-color: #3B3F47; transform: translateY(-2px); }
-.kl { font-size: 10.5px; color: #7D8590; font-weight: 600; letter-spacing: 0.4px; margin-bottom: 6px; }
-.kv { font-size: 22px; font-weight: 800; color: #F3F4F6; letter-spacing: -0.4px; }
-.kd { font-size: 12px; font-weight: 600; margin-top: 4px; }
+.kl { font-size: 12px; color: #9CA3AF; font-weight: 600; letter-spacing: 0.3px; margin-bottom: 8px; }
+.kv { font-size: 24px; font-weight: 800; color: #F3F4F6; letter-spacing: -0.5px; }
+.kd { font-size: 13px; font-weight: 600; margin-top: 6px; }
 
 /* ── news (통일 카드 — hero/regular 구분 제거) ── */
 .nc {
@@ -225,12 +225,27 @@ if inds:
         bg = "#1F1214" if alert else "#1A1D24"
         rec = i.get("recorded_at", "")
         date_str = rec[:10] if rec and len(str(rec)) >= 10 else ""
+        # 단위 매핑
+        nm = i["name"]
+        cat = i.get("category", "")
+        val_str = str(i["current_value"])
+        if "환율" in nm or "원/$" in nm or "원달러" in nm:
+            val_str = f'{i["current_value"]:,.0f}원'
+        elif "금리" in nm or "CPI" in nm or "수출" in nm:
+            val_str = f'{i["current_value"]}%'
+        elif cat == "원자재":
+            val_str = f'${i["current_value"]:,.1f}'
+        elif "S&P" in nm or "DXY" in nm or "달러인덱스" in nm:
+            val_str = f'{i["current_value"]:,.1f}'
+        elif "VIX" in nm or "F&G" in nm:
+            val_str = f'{i["current_value"]:.1f}'
+
         h += (
             f'<div class="kcard" style="background:{bg};">'
             f'<div class="kl">{i["name"]}</div>'
-            f'<div class="kv">{i["current_value"]}</div>'
+            f'<div class="kv">{val_str}</div>'
             f'<div class="kd" style="color:{dc};">{ds}{c:.1f}%</div>'
-            f'<div style="font-size:9.5px;color:#4B5563;margin-top:3px;">{date_str}</div>'
+            f'<div style="font-size:11px;color:#6B7280;margin-top:6px;">{date_str}</div>'
             f'</div>'
         )
     h += '</div>'
