@@ -134,23 +134,58 @@ def summarize_with_llm(
         return _fallback_analyze(item)
 
 
+# 제목 기반 명시적 방향 규칙 (키워드 카운트보다 우선)
+_TITLE_RULES_BULL = [
+    ("호실적", 0.8), ("역대 최대", 0.8), ("역대급", 0.8), ("사상 최고", 0.8),
+    ("흑자 전환", 0.8), ("수출 호조", 0.75), ("수주", 0.7),
+    ("실적 개선", 0.75), ("매출 증가", 0.75), ("이익 증가", 0.75),
+    ("record profit", 0.8), ("beat expectations", 0.8), ("earnings surprise", 0.8),
+]
+_TITLE_RULES_BEAR = [
+    ("급락", 0.8), ("폭락", 0.85), ("crash", 0.85), ("plunge", 0.85),
+    ("제재", 0.7), ("sanctions", 0.7),
+    ("금리 인상", 0.7), ("rate hike", 0.7), ("inflation", 0.65),
+    ("경기침체", 0.8), ("recession", 0.8), ("적자", 0.75),
+    ("slump", 0.75), ("tumble", 0.75), ("selloff", 0.8),
+    ("하락", 0.65), ("decline", 0.6), ("lower", 0.55),
+]
+
+
 def _fallback_analyze(item: NewsItem) -> bool:
-    """키워드 기반 fallback 분석 (BEAR 편향 보정 적용)"""
+    """규칙 기반 fallback 분석 (제목 규칙 → 키워드 카운트 → 보수적 판단)"""
     text = item.text_for_analysis.lower()
     title = item.title.lower()
 
+    # 1단계: 제목 명시적 규칙 (가장 신뢰도 높음)
+    for kw, conf in _TITLE_RULES_BULL:
+        if kw.lower() in title:
+            item.direction = Direction.BULL
+            item.confidence = conf
+            item.summary_1line = item.title[:50]
+            item.investment_signal = f"강세 신호: 제목에 '{kw}' 감지"
+            item.action_suggestion = "분할매수" if conf >= 0.75 else "관망"
+            item.risk_factor = "제목 기반 판정. 본문 확인 권장"
+            return False
+
+    for kw, conf in _TITLE_RULES_BEAR:
+        if kw.lower() in title:
+            item.direction = Direction.BEAR
+            item.confidence = conf
+            item.summary_1line = item.title[:50]
+            item.investment_signal = f"약세 신호: 제목에 '{kw}' 감지"
+            item.action_suggestion = "비중축소" if conf >= 0.75 else "관망"
+            item.risk_factor = "하방 리스크 주의. 본문 확인 권장"
+            return False
+
+    # 2단계: 키워드 카운트 (제목 규칙 미매칭 시)
     bull_count = sum(1 for kw in BULL_KEYWORDS if kw.lower() in text)
     bear_count = sum(1 for kw in BEAR_KEYWORDS if kw.lower() in text)
 
-    # 제목에 BEAR 키워드가 있으면 가중치 2배 (제목이 핵심)
-    title_bear = sum(1 for kw in BEAR_KEYWORDS if kw.lower() in title)
-    bear_count += title_bear
-
-    # 지정학 뉴스(L3+)는 BEAR 가산 (전쟁/제재 = 시장 부정적)
+    # 지정학 뉴스(L3+)는 BEAR 가산
     if getattr(item, "geo_level", None) and item.geo_level >= 3:
         bear_count += 1
 
-    # 동점이면 BEAR (보수적 판단 — 리스크 과소평가 방지)
+    # 동점이면 BEAR (보수적)
     if bull_count > bear_count:
         item.direction = Direction.BULL
     else:

@@ -490,4 +490,4 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 | 04/13 | `89159ad` | Windows 시작 프로그램 자동 실행 등록 (start_nias.bat) | start_nias.bat |
 | 04/13 | `492b310` | README.md 전면 개편 — 운영 가이드+트러블슈팅+유지보수 통합 | README.md |
 | 04/13 | `1ef7432` | 번역 누락 전면 수정 — 대시보드+일일리포트+주간리포트+콘솔 TOP5 모두 적용 | app.py, email_notifier.py, weekly_report.py, main.py |
-| 04/13 | 현재 | 대시보드 요약 화면 — 지표 6개+TOP3 카드(색상코딩)+지정학 요약 한눈에 | app.py |
+| 04/13 | 다수 | 대시보드 1~3순위 + 데이터 신뢰도 3건 (신선도+소스가중치+fallback규칙) | app.py, impact_scorer.py, summarizer.py, freshness.py |

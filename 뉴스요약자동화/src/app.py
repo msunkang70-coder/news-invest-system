@@ -168,11 +168,14 @@ with col_news:
             stocks = []
         stocks_str = ", ".join(stocks[:3]) if stocks else ""
 
-        # 발행일
+        # 발행일 + 신선도
+        from utils.freshness import freshness_badge
         pub_str = ""
+        fresh_badge = ""
         if pub:
             try:
                 pub_str = pub[:10] if len(str(pub)) >= 10 else str(pub)
+                fresh_badge = freshness_badge(pub)
             except Exception:
                 pass
 
@@ -216,7 +219,7 @@ with col_news:
             # 2행: 방향 + 행동 + 출처 + 일자
             f'<div style="margin-top:6px;font-size:12px;color:#555;">'
             f'<span style="background:{action_color};color:white;padding:1px 8px;border-radius:10px;font-size:11px;">{d_label} → {action or "관망"}</span>'
-            f' &nbsp; {source} &nbsp; {pub_str} &nbsp; {link_html}'
+            f' &nbsp; {source} &nbsp; {pub_str} &nbsp; {fresh_badge} &nbsp; {link_html}'
             f'</div>'
             # 3행: 시그널
             f'{signal_html}'
@@ -247,7 +250,23 @@ with col_geo:
     else:
         st.caption("분류된 지정학 뉴스 없음")
 
-st.caption(f"뉴스 {stats['news']}건 | 지표 {stats['indicators']}건 | 갱신: {datetime.now().strftime('%H:%M')}")
+# 마지막 수집 시점
+last_collect = ""
+if news_data:
+    latest_collected = max(n.get("collected_time", "") for n in news_data if n.get("collected_time"))
+    if latest_collected:
+        from utils.freshness import relative_time
+        last_collect = f" | 마지막 수집: {relative_time(latest_collected)}"
+        try:
+            from utils.freshness import is_stale
+            if is_stale(latest_collected, hours=1):
+                last_collect += " ⚠️"
+            else:
+                last_collect += " ✅"
+        except Exception:
+            pass
+
+st.caption(f"뉴스 {stats['news']}건 | 지표 {stats['indicators']}건 | 갱신: {datetime.now().strftime('%H:%M')}{last_collect}")
 st.divider()
 
 # ─── 탭 ───
@@ -277,6 +296,7 @@ with tab1:
     if source_filter != "전체":
         filtered = [n for n in filtered if n.get("source_type") == source_filter]
 
+    from utils.freshness import freshness_badge
     st.caption(f"총 {len(filtered)}건 (필터 적용)")
 
     if filtered:
@@ -316,7 +336,7 @@ with tab1:
                 f'<div class="summary-card {card_class}">'
                 f'<span class="score-badge {badge_class}">{score}</span>'
                 f'{d_emoji} {title[:75]}{action_html}{geo_tag}'
-                f'<br><span style="color:#888;font-size:11px;">{source} ({item.get("source_type","RSS")}){link_html}</span>'
+                f'<br><span style="color:#888;font-size:11px;">{source} ({item.get("source_type","RSS")}) {freshness_badge(item.get("published_time",""))}{link_html}</span>'
                 f'</div>',
                 unsafe_allow_html=True,
             )

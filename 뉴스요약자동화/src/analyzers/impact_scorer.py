@@ -120,7 +120,21 @@ def score_impact(items: List[NewsItem]) -> List[NewsItem]:
 
         # 지정학 승수 적용 (v2.0)
         geo_mult = {1: 1.0, 2: 1.2, 3: 1.5, 4: 2.0, 5: 3.0}.get(item.geo_level or 0, 1.0)
-        item.impact_score = round(min(10.0, base_score * geo_mult), 1)
+
+        # 소스 신뢰도 가중치 (Tier 1=1.0, Tier 2=0.9, Tier 3=0.7)
+        source_name = (item.source or "").lower()
+        if any(s in source_name for s in ["reuters", "bloomberg", "연합뉴스", "한국경제", "매일경제"]):
+            source_mult = 1.0   # Tier 1: 주요 통신사/경제지
+        elif any(s in source_name for s in ["cnbc", "wsj", "ft via", "조선", "sbs", "gn-kr"]):
+            source_mult = 0.95  # Tier 2: 방송/일간지/Google News 국내
+        elif any(s in source_name for s in ["gn -", "investing", "google", "sns"]):
+            source_mult = 0.85  # Tier 3: Google News 영문/SNS
+        elif any(s in source_name for s in ["war on", "diplomat", "38 north", "defense"]):
+            source_mult = 0.7   # Tier 4: 분석 블로그/싱크탱크
+        else:
+            source_mult = 0.9
+
+        item.impact_score = round(min(10.0, base_score * geo_mult * source_mult), 1)
 
         item.score_breakdown = {
             "urgency": item.urgency,
@@ -128,6 +142,7 @@ def score_impact(items: List[NewsItem]) -> List[NewsItem]:
             "certainty": item.certainty,
             "tier_mult": tier_mult,
             "geo_mult": geo_mult,
+            "source_mult": source_mult,
         }
 
     # 임계값 필터
