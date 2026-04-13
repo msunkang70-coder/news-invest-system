@@ -5,130 +5,266 @@
 | 항목 | 내용 |
 |------|------|
 | 프로젝트명 | NIAS — 실시간 뉴스 요약 및 투자 알람 자동화 시스템 |
-| 시작일 | 2026-04-11 |
-| 목표 완료일 | 2026-06-20 (10주) |
-| 현재 상태 | 기획 완료 / 개발 준비 |
+| 현재 상태 | **운영 중** (Phase 5 완료, 유저 테스트 95%) |
 | 담당 | MS |
 
-## 핵심 문제
+## 한 줄 설명
 
-개인 투자자가 하루 수백 건의 금융 뉴스, 시장지표 변동, 지정학 이벤트 속에서 투자에 실제 영향을 주는 핵심 정보를 놓치거나, 감지가 30분~1시간 지연되어 적시 대응이 불가능한 문제.
+PC를 켜면 자동으로 금융 뉴스 + 시장지표를 수집·분석하여, 중요한 투자 정보를 **이메일 + Slack**으로 알려주는 시스템.
 
-## 핵심 솔루션
+---
 
-42개 소스에서 뉴스·시장지표·지정학 이벤트를 5~10분 주기로 자동 수집하고, LLM 기반 BULL/BEAR 방향성 판단 + 지정학 에스컬레이션 5단계 분류 + 교차 자산 영향 체인 분석을 수행하여, 13종 알림 룰에 따라 이메일/Telegram으로 자동 알림한다.
+## 빠른 시작 (처음 설정)
 
-## 성공 기준
-
-| KPI | 현재값 | 목표값 | 측정 방법 |
-|-----|--------|--------|-----------|
-| 투자 의사결정 시간 | 90분/일 | 10분/일 | 사용자 기록 |
-| BULL/BEAR 정확도 | - | 75% | 200건 라벨링 |
-| 알림 지연시간 | - | < 2분 | 로그 분석 |
-| 시장지표 모니터링 | 0개 | 14개 | 수집 로그 |
-| 지정학 분류 정확도 | 0% | 80% | 50건 검증 |
-
-## 기술 스택
-
-| 레이어 | 기술 |
-|--------|------|
-| Frontend | Streamlit 1.40+ |
-| Backend | Python 3.12+ / APScheduler 3.11+ |
-| AI/ML | Gemini 2.5 Flash API |
-| Market Data | yfinance / FinanceDataReader / KIS Open API |
-| Database | SQLite 3 + JSON Cache |
-| Notification | Gmail API (OAuth2) + Telegram Bot |
-| Template | Jinja2 (HTML 이메일 템플릿) |
-
-## 프로젝트 구조
-
-```
-뉴스요약자동화/
-├── PRD.md                    # 제품 요구사항 문서
-├── Architecture.md           # 시스템 아키텍처
-├── KPI.md                    # KPI 추적
-├── README.md                 # 본 문서
-│
-├── src/
-│   ├── main.py               # 통합 엔트리포인트
-│   ├── config.py             # 중앙 설정 (소스, 키워드, 임계값)
-│   │
-│   ├── collectors/           # 수집 레이어
-│   │   ├── rss_collector.py
-│   │   ├── market_data_collector.py
-│   │   ├── night_futures_collector.py
-│   │   ├── dart_collector.py
-│   │   ├── economic_indicator.py
-│   │   └── sentiment_collector.py
-│   │
-���   ├── analyzers/            # 분석 레이어
-│   │   ├── impact_scorer.py
-│   │   ├── geopolitical_classifier.py
-│   │   ├── impact_chain_analyzer.py
-│   │   ├── market_classifier.py
-│   │   ├── summarizer.py
-│   │   └── signal_aggregator.py
-│   │
-│   ├── models/               # 데이터 모델
-│   │   ���── news_item.py
-│   │   └── market_indicator.py
-│   │
-│   ├── notifiers/            # 알림 레이어
-│   │   ├── alert_engine.py
-│   │   ├── email_notifier.py
-│   │   └── templates/
-│   │       ├── urgent.html
-│   │       ├── daily_report.html
-│   │       └── market_alert.html
-│   │
-│   ├── scheduler/            # 스케줄러
-│   │   └── pipeline_scheduler.py
-│   │
-│   └── utils/                # 유틸리티
-│       ├── cache.py
-│       └── dedup.py
-│
-├── data/                     # 데이터 (gitignore)
-├── output/                   # 리포트 출력
-├── requirements.txt
-└── .env.example              # 환경변수 템플릿
-```
-
-## 실행 방법
-
-### 환경 설정
+### 1단계: 의존성 설치
 
 ```bash
-# 1. 의존성 설치
+cd 뉴스요약자동화
 pip install -r requirements.txt
-
-# 2. 환경 변수 설정
-cp .env.example .env
-# .env 파일에 API 키 설정
-
-# 3. Gmail OAuth 설정 (최초 1회)
-# Google Cloud Console → Gmail API 활성화 → OAuth 2.0 클라이언트 생성
-# credentials.json 다운로드 → src/ 폴더에 배치
 ```
 
-### 실행
+### 2단계: API 키 설정
+
+`.env.example`을 `.env`로 복사하고 실제 키를 입력:
 
 ```bash
-# 단일 실행
+cp .env.example .env
+```
+
+| API | 발급처 | 용도 |
+|-----|--------|------|
+| GEMINI_API_KEY | [Google AI Studio](https://aistudio.google.com/apikey) | 뉴스 BULL/BEAR 분석 |
+| ALERT_EMAIL_TO | 본인 Gmail | 알림 수신 이메일 |
+| SLACK_WEBHOOK_URL | [Slack API](https://api.slack.com/apps) | Slack 알림 |
+| DART_API_KEY | [DART](https://opendart.fss.or.kr) | 전자공시 |
+| FRED_API_KEY | [FRED](https://fred.stlouisfed.org) | 미국 경제지표 |
+| BOK_API_KEY | [한국은행 ECOS](https://ecos.bok.or.kr) | 한국 경제지표 |
+
+### 3단계: Gmail OAuth 인증 (최초 1회)
+
+1. [Google Cloud Console](https://console.cloud.google.com)에서 Gmail API 활성화
+2. OAuth 2.0 클라이언트 생성 → `credentials.json` 다운로드
+3. `src/` 폴더에 배치
+4. 아래 명령 실행 → 브라우저에서 인증:
+
+```bash
 python src/main.py
+```
 
-# 스케줄러 모드 (24/7 운영)
-python src/main.py --schedule
+상세 가이드: [docs/GMAIL_API_SETUP.md](docs/GMAIL_API_SETUP.md)
 
-# 대시보드
+### 4단계: 테스트 실행
+
+```bash
+python src/main.py --sources kr
+```
+
+성공하면 이메일+Slack으로 알림이 옵니다.
+
+---
+
+## 일상 운영 가이드
+
+### PC 켤 때 자동 시작 (설정 완료됨)
+
+```
+PC 부팅 → start_nias.bat 자동 실행 → 스케줄러 + 대시보드 시작
+```
+
+Windows 시작 프로그램에 등록되어 있어, **PC를 켜기만 하면 자동으로 동작**합니다.
+
+### 자동 실행 스케줄
+
+| 시간대 | 작업 | 주기 |
+|--------|------|------|
+| 06:00~09:00 (장전) | 뉴스 수집 | 5분 |
+| 09:00~15:30 (장중) | 뉴스 수집 | 5분 |
+| 15:30~23:00 (장후) | 뉴스 수집 | 15분 |
+| 23:00~06:00 (야간) | 글로벌 뉴스만 | 60분 |
+| **항상** | 시장지표 모니터링 (VIX, 환율, 유가 등 13개) | 10분 |
+| 월~금 08:00, 18:00 | 일일 투자 리포트 이메일 | 자동 |
+
+### PC가 꺼져 있을 때
+
+- 야간(23:00~06:00) 글로벌 뉴스 수집이 중단됩니다
+- **다음 날 08:00 일일 리포트가 야간 누락분을 보완합니다**
+- 장중(09:00~15:30)에 PC가 켜져있으면 투자 판단에 필요한 알림은 전부 받습니다
+
+### 알림 채널
+
+| 채널 | 언제 | 내용 |
+|------|------|------|
+| **이메일** | 긴급 뉴스, 지표 급변, 일일 리포트 | 상세 분석 (시나리오, 행동 제안, 원문 링크) |
+| **Slack** | 동일 | 즉시 인지용 간결 알림 (팝업) |
+| **대시보드** | 항상 | http://localhost:8501 (6탭: 뉴스/종목/지표/지정학/알림/히스토리) |
+
+### 알림 기준
+
+| 알림 유형 | 조건 | 발송 |
+|-----------|------|------|
+| 긴급 속보 | 영향도 8점 이상 | 즉시 (이메일+Slack) |
+| 고영향 뉴스 | 영향도 6.5점 이상 | 1시간 배치 |
+| VIX 경고 | VIX 25 이상 | 즉시 |
+| VIX 패닉 | VIX 30 이상 | 즉시 (전 채널) |
+| 환율 급변 | 원달러 1,400원+ 또는 일변동 1.5%+ | 즉시 |
+| 유가 급변 | WTI 일변동 5%+ | 즉시 |
+| 지정학 L3+ | 무력 시위 이상 | 즉시 (전 채널) |
+| 일일 리포트 | 월~금 08:00, 18:00 | 자동 |
+
+일일 알림 상한: **10건** (과다 알림 방지)
+
+---
+
+## 모니터링 명령어
+
+```bash
+# 스케줄러 동작 확인
+ps aux | grep "main.py"
+
+# 실시간 로그 보기
+tail -f 뉴스요약자동화/data/scheduler.log
+
+# 최근 알림 확인
+tail -20 data/scheduler.log | grep "알림"
+
+# DB 현황 확인
+cd 뉴스요약자동화
+python -c "import sys; sys.path.insert(0,'src'); from utils.db import get_db_stats; print(get_db_stats())"
+
+# CSV 내보내기 (Excel 분석용)
+python -c "import sys; sys.path.insert(0,'src'); from utils.export import export_all; export_all()"
+
+# 주간 리포트 수동 발송
+python -c "import sys; sys.path.insert(0,'src'); from reports.weekly_report import send_weekly_report; send_weekly_report()"
+
+# 대시보드 수동 시작
 streamlit run src/app.py
 ```
 
+---
+
+## 트러블슈팅
+
+### 스케줄러가 안 돌아요
+
+```bash
+# 1. 프로세스 확인
+ps aux | grep "main.py"
+
+# 2. 없으면 수동 시작
+cd 뉴스요약자동화
+nohup python -X utf8 src/main.py --schedule > data/scheduler.log 2>&1 &
+
+# 또는 bat 파일 더블클릭
+start_nias.bat
+```
+
+### 이메일이 안 와요
+
+```bash
+# Gmail 토큰 확인
+ls data/gmail_token.json
+
+# 토큰 만료 시 재인증
+rm data/gmail_token.json
+python src/main.py
+# → 브라우저에서 Google 인증
+```
+
+### Slack 알림이 안 와요
+
+```bash
+# 웹훅 URL 확인
+grep SLACK .env
+
+# 테스트 발송
+python -c "
+import sys; sys.path.insert(0,'src')
+from notifiers.slack_notifier import send_slack
+send_slack('NIAS 테스트 메시지')
+"
+```
+
+### 알림이 너무 많아요
+
+`.env`가 아닌 `src/config.py`에서 조정:
+
+```python
+IMPACT_THRESHOLD = 6.5    # 높이면 알림 줄어듦 (7.0 권장)
+```
+
+`src/notifiers/alert_engine.py`:
+
+```python
+max_daily_alerts = 10     # 줄이면 일일 상한 감소
+```
+
+수정 후 **스케줄러 재시작 필수:**
+
+```bash
+pkill -f "main.py"
+nohup python -X utf8 src/main.py --schedule > data/scheduler.log 2>&1 &
+```
+
+### 코드 수정 후 반영이 안 돼요
+
+Python은 실행 시점의 코드를 메모리에 로드합니다. **코드 수정 후 반드시 재시작:**
+
+```bash
+pkill -f "main.py"
+start_nias.bat
+```
+
+---
+
+## 정기 유지보수
+
+| 주기 | 작업 | 명령 |
+|------|------|------|
+| **자동** | 뉴스 수집 + 분석 + 알림 | 없음 (스케줄러) |
+| **월 1회** | 로그 정리 | `> data/scheduler.log` |
+| **90일** | Gmail 재인증 | `rm data/gmail_token.json` → `python src/main.py` |
+| **필요 시** | DB 백업 | `cp data/nias.db data/nias_backup.db` |
+
+---
+
+## 수집 소스 현황 (42개)
+
+| 카테고리 | 소스 | 수량 |
+|---------|------|------|
+| 국내 뉴스 RSS | 연합뉴스, 한경, 매경, 조선, SBS | 5 |
+| 글로벌 뉴스 RSS | Reuters, CNBC, Bloomberg, WSJ, FT, Investing | 6 |
+| 지정학 RSS | Defense One, War on the Rocks, The Diplomat, 38 North | 4 |
+| 한국어 Google News | 삼성전자, SK하이닉스, 코스피, 금리환율, 유가에너지 | 5 |
+| 영어 Google News | 반도체, AI, 금리, 유가, 한국경제, 관세, 전쟁, 제재, 대만 | 9 |
+| SNS | Fed 발언, 증시 전문가 | 2 |
+| 전자공시 | DART | 1 |
+| 경제지표 | FRED(미국 5개) + 한은(2개) + ECOS(4개) | 3 API |
+| 시장지표 | yfinance(7) + FDR(1) + Crypto F&G(1) | 9 ticker |
+| 야간선물 | KIS Open API (fallback: yfinance) | 1 |
+
+## 핵심 기능
+
+| 기능 | 설명 |
+|------|------|
+| 3-Tier 키워드 필터 | STRONG(80+) / MEDIUM(30+) / WEAK(8+) 키워드 자동 분류 |
+| 다차원 영향도 | urgency × scope × certainty × tier → 1~10점 |
+| LLM BULL/BEAR 판단 | Gemini 2.5 Flash (TOP 15건) + 키워드 fallback |
+| 지정학 에스컬레이션 | L1(긴장) ~ L5(전면위기) 5단계 분류 |
+| 교차 자산 영향 체인 | 5대 체인 (중동→유가, 달러→원화, 대만→반도체, 금리→성장주, 북한→코스피) |
+| 영어 뉴스 자동 번역 | Google Translate (LLM 미소모) |
+| 시장지표 임계값 알림 | VIX, 환율, 유가, 국채, 야간선물 + 정량 평가/시나리오/행동 제안 |
+
+---
+
 ## 관련 문서
 
-| 문서 | 경로 |
+| 문서 | 내용 |
 |------|------|
-| PRD | [./PRD.md](./PRD.md) |
-| 아키텍처 | [./Architecture.md](./Architecture.md) |
-| KPI | [./KPI.md](./KPI.md) |
-| 상세기획서 v2.0 | [./뉴스요���자동화_상세기획서_v2.0.md](./뉴스요약자동화_상세기획서_v2.0.md) |
+| [PRD.md](./PRD.md) | 제품 요구사항 (15개 기능, P0/P1/P2) |
+| [Architecture.md](./Architecture.md) | 시스템 아키텍처 (6-Layer) |
+| [KPI.md](./KPI.md) | KPI 추적 + 주간 로그 |
+| [TASK.md](./TASK.md) | 65개 Task + 변경 로그 |
+| [docs/QA_REPORT.md](./docs/QA_REPORT.md) | QA 품질 개선 리포트 (5 페르소나) |
+| [docs/GMAIL_API_SETUP.md](./docs/GMAIL_API_SETUP.md) | Gmail OAuth 설정 가이드 |
+| [상세기획서 v2.0](./뉴스요약자동화_상세기획서_v2.0.md) | 16챕터 상세 기획 |

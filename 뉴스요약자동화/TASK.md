@@ -487,4 +487,5 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 | 04/13 | `ef2f055` | Slack+이메일 발행 일자 부각 — 제목에 (MM/DD), 본문 굵게, Slack 알림 강화 | slack_notifier.py, email_notifier.py |
 | 04/13 | `aee1124` | QA 개선 3건: fallback 편향 수정(97%→15% BULL), threshold 6.5, 알림상한 10건, LLM TOP15 | summarizer.py, config.py, alert_engine.py |
 | 04/13 | `55b8372` | 영어 뉴스 한국어 자동 번역 (Google Translate, LLM 미소모). 이메일+Slack 적용 | translator.py, email_notifier.py, slack_notifier.py |
-| 04/13 | 현재 | Windows 시작 프로그램 자동 실행 등록 (start_nias.bat) | start_nias.bat |
+| 04/13 | `89159ad` | Windows 시작 프로그램 자동 실행 등록 (start_nias.bat) | start_nias.bat |
+| 04/13 | 현재 | README.md 전면 개편 — 운영 가이드+트러블슈팅+유지보수 통합 | README.md |
