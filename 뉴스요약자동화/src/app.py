@@ -286,7 +286,8 @@ with t1:
     for item in fl:
         categories[_categorize(item)].append(item)
 
-    def _render_news_card(item):
+    def _card_html(item):
+        """뉴스 카드 HTML 문자열"""
         sc = item.get("impact_score", 0)
         url = item.get("url", "")
         pub = item.get("published_time", "")
@@ -298,30 +299,36 @@ with t1:
         time_badge = f'<span class="{time_cls}">{pub_date}</span>' if pub_date else ""
         return (
             f'<div class="nc">'
-            f'<div class="nc-t"><span class="p p-s">{sc}</span> {item["title"][:68]} {act_p}</div>'
+            f'<div class="nc-t"><span class="p p-s">{sc}</span> {item["title"][:66]} {act_p}</div>'
             f'<div class="nc-m">{item.get("source","")} {time_badge} {link}</div>'
             f'</div>'
         )
 
     def _render_cat_box(cat_name, cat_items):
-        """카테고리 박스: 테두리로 묶기 + 고정 높이감"""
+        """카테고리 전체를 하나의 HTML 블록으로 렌더링"""
         count = len(cat_items)
+        # 헤더 + 상위 3건을 하나의 div 안에 렌더링
+        cards_html = ""
+        for item in cat_items[:3]:
+            cards_html += _card_html(item)
+        if not cat_items:
+            cards_html = '<div style="color:#4B5563;font-size:12px;padding:8px 0;">해당 뉴스 없음</div>'
+
         st.markdown(
-            f'<div style="border:1px solid #25292F; border-radius:12px; padding:16px; margin-bottom:14px; min-height:200px;">'
-            f'<div style="font-size:13px;font-weight:700;color:#D1D5DB;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #25292F;">'
-            f'{cat_name} <span style="color:#6B7280;font-weight:500;">{count}건</span></div>',
+            f'<div style="border:1px solid #25292F;border-radius:14px;padding:18px;margin-bottom:14px;">'
+            f'<div style="font-size:14px;font-weight:700;color:#D1D5DB;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #1E2228;">'
+            f'{cat_name} <span style="color:#6B7280;font-weight:400;font-size:12px;margin-left:6px;">{count}건</span></div>'
+            f'{cards_html}'
+            f'</div>',
             unsafe_allow_html=True,
         )
-        if cat_items:
-            for item in cat_items[:3]:
-                st.markdown(_render_news_card(item), unsafe_allow_html=True)
-            if count > 3:
-                with st.expander(f"전체 보기 (+{count - 3}건)", expanded=False):
-                    for item in cat_items[3:]:
-                        st.markdown(_render_news_card(item), unsafe_allow_html=True)
-        else:
-            st.markdown('<p style="color:#4B5563;font-size:12px;padding:8px 0;">해당 뉴스 없음</p>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        # 3건 초과분은 Streamlit expander (HTML 밖)
+        if count > 3:
+            with st.expander(f"{cat_name} 전체 보기 (+{count - 3}건)", expanded=False):
+                rest_html = ""
+                for item in cat_items[3:]:
+                    rest_html += _card_html(item)
+                st.markdown(rest_html, unsafe_allow_html=True)
 
     # 2열 배치
     col_l, col_r = st.columns(2)
