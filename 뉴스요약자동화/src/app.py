@@ -85,6 +85,18 @@ st.markdown("""
 .card-bear { background: #fef2f2; border-color: #ef4444; }
 .card-geo  { background: #fffbeb; border-color: #f59e0b; }
 .card-neutral { background: #f8fafc; border-color: #94a3b8; }
+.card-stale { opacity: 0.5; }
+.card-old { opacity: 0.7; }
+.type-icon { font-size: 16px; margin-right: 4px; }
+.chain-flow {
+    background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px;
+    padding: 8px 12px; margin-top: 6px; font-size: 12px;
+}
+.chain-arrow { color: #f59e0b; font-weight: bold; margin: 0 4px; }
+.verdict-bar {
+    padding: 10px 16px; border-radius: 8px; margin-bottom: 12px;
+    font-size: 15px; font-weight: bold;
+}
 .score-badge {
     display: inline-block; padding: 2px 8px; border-radius: 12px;
     font-weight: bold; font-size: 12px; color: white; margin-right: 6px;
@@ -99,7 +111,26 @@ st.markdown("""
 direction_emoji = "📈" if "강세" in market_direction else "📉"
 st.markdown(f"## {direction_emoji} NIAS v2.0 — 실시간 투자 알람")
 
-# ═══ 요약 대시보드 (첫 화면, 한눈에 파악) ═══
+# ═══ 오늘의 한 줄 판단 ═══
+geo_count = sum(1 for n in news_data if n.get("geo_level"))
+if "강세" in market_direction:
+    if geo_count >= 3:
+        verdict_text = "강세 우위이나 지정학 리스크 상존. 선별적 매수, 헷지 병행"
+        verdict_bg = "#fef3c7"
+    else:
+        verdict_text = "강세장. 추세 추종 매수 유효, 고점 추격 주의"
+        verdict_bg = "#dcfce7"
+else:
+    if geo_count >= 3:
+        verdict_text = "약세 + 지정학 리스크. 신규 매수 보류, 현금 비중 확대 권장"
+        verdict_bg = "#fecaca"
+    else:
+        verdict_text = "약세 흐름. 방어적 운용, 반등 확인 전까지 관망"
+        verdict_bg = "#fee2e2"
+
+st.markdown(f'<div class="verdict-bar" style="background:{verdict_bg};">{direction_emoji} {verdict_text}</div>', unsafe_allow_html=True)
+
+# ═══ 요약 대시보드 ═══
 
 # 행 1: 시장 판단 + 핵심 지표 6개
 col_m, col_v, col_fx, col_oil, col_bond, col_fg = st.columns(6)
@@ -168,16 +199,35 @@ with col_news:
             stocks = []
         stocks_str = ", ".join(stocks[:3]) if stocks else ""
 
-        # 발행일 + 신선도
-        from utils.freshness import freshness_badge
+        # 발행일 + 신선도 + 페이드
+        from utils.freshness import freshness_badge, is_stale
         pub_str = ""
         fresh_badge = ""
+        stale_class = ""
         if pub:
             try:
                 pub_str = pub[:10] if len(str(pub)) >= 10 else str(pub)
                 fresh_badge = freshness_badge(pub)
+                if is_stale(pub, 48):
+                    stale_class = "card-stale"
+                elif is_stale(pub, 24):
+                    stale_class = "card-old"
             except Exception:
                 pass
+
+        # D2: 뉴스 유형별 아이콘
+        if geo_lv:
+            type_icon = "🌍"
+        elif any(kw in title.lower() for kw in ["금리", "rate", "fed", "fomc", "cpi", "gdp"]):
+            type_icon = "🏛️"
+        elif any(kw in title.lower() for kw in ["유가", "oil", "원유", "opec", "에너지"]):
+            type_icon = "🛢️"
+        elif any(kw in title.lower() for kw in ["환율", "달러", "원달러", "dollar"]):
+            type_icon = "💱"
+        elif stocks_str:
+            type_icon = "💼"
+        else:
+            type_icon = d_icon
 
         # 카드 색상
         if direction == "BULL":
@@ -209,21 +259,32 @@ with col_news:
 
         link_html = f'<a href="{url}" target="_blank" style="color:{border};font-size:11px;text-decoration:none;">원문 보기 →</a>' if url and url.startswith("http") else ""
 
+        # D3: 체인 화살표 플로우
+        chain_html = ""
+        if chain:
+            chain_parts = chain.replace("->", "→").split("→")
+            icons = {"유가": "🛢️", "인플레": "📈", "금리": "🏛️", "성장주": "📉", "달러": "💱",
+                     "원화": "💱", "코스피": "📊", "반도체": "🔬", "방산": "🛡️", "운송비": "🚛"}
+            flow_parts = []
+            for p in chain_parts:
+                p = p.strip()
+                icon = next((v for k, v in icons.items() if k in p), "▸")
+                flow_parts.append(f"{icon}{p}")
+            chain_html = f'<div class="chain-flow">🔗 ' + ' <span class="chain-arrow">→</span> '.join(flow_parts) + '</div>'
+
         st.markdown(
-            f'<div style="background:{bg}; border-left:5px solid {border}; padding:14px 16px; border-radius:10px; margin-bottom:10px;">'
-            # 1행: 점수 + 제목
+            f'<div class="{stale_class}" style="background:{bg}; border-left:5px solid {border}; padding:14px 16px; border-radius:10px; margin-bottom:10px;">'
             f'<div style="display:flex;align-items:center;gap:8px;">'
             f'<span style="background:{badge_bg};color:white;padding:3px 10px;border-radius:14px;font-weight:bold;font-size:13px;">{score}</span>'
-            f'<span style="font-size:15px;font-weight:bold;line-height:1.3;">{d_icon} {title}</span>'
+            f'<span class="type-icon">{type_icon}</span>'
+            f'<span style="font-size:15px;font-weight:bold;line-height:1.3;">{title}</span>'
             f'</div>'
-            # 2행: 방향 + 행동 + 출처 + 일자
             f'<div style="margin-top:6px;font-size:12px;color:#555;">'
             f'<span style="background:{action_color};color:white;padding:1px 8px;border-radius:10px;font-size:11px;">{d_label} → {action or "관망"}</span>'
             f' &nbsp; {source} &nbsp; {pub_str} &nbsp; {fresh_badge} &nbsp; {link_html}'
             f'</div>'
-            # 3행: 시그널
             f'{signal_html}'
-            # 4행: 종목/지정학/체인
+            f'{chain_html}'
             f'{"<div style=margin-top:4px;font-size:11px;color:#888;>" + meta_html + "</div>" if meta_html else ""}'
             f'</div>',
             unsafe_allow_html=True,

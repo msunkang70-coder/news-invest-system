@@ -134,7 +134,23 @@ def score_impact(items: List[NewsItem]) -> List[NewsItem]:
         else:
             source_mult = 0.9
 
-        item.impact_score = round(min(10.0, base_score * geo_mult * source_mult), 1)
+        # 신선도 감쇄 (24h 이내=1.0, 24-48h=0.7, 48h+=0.4)
+        freshness_mult = 1.0
+        if item.published_time:
+            from datetime import datetime, timedelta
+            try:
+                pt = item.published_time
+                if isinstance(pt, str):
+                    pt = datetime.fromisoformat(pt.replace("Z", ""))
+                age_hours = (datetime.now() - pt).total_seconds() / 3600
+                if age_hours > 48:
+                    freshness_mult = 0.4
+                elif age_hours > 24:
+                    freshness_mult = 0.7
+            except Exception:
+                pass
+
+        item.impact_score = round(min(10.0, base_score * geo_mult * source_mult * freshness_mult), 1)
 
         item.score_breakdown = {
             "urgency": item.urgency,
@@ -143,6 +159,7 @@ def score_impact(items: List[NewsItem]) -> List[NewsItem]:
             "tier_mult": tier_mult,
             "geo_mult": geo_mult,
             "source_mult": source_mult,
+            "freshness_mult": freshness_mult,
         }
 
     # 임계값 필터

@@ -157,14 +157,30 @@ def _fallback_analyze(item: NewsItem) -> bool:
     title = item.title.lower()
 
     # 1단계: 제목 명시적 규칙 (가장 신뢰도 높음)
+    # 종목/소스 정보 수집 (시그널 조합용)
+    import json as _json
+    stocks_raw = getattr(item, "tagged_stocks", [])
+    if isinstance(stocks_raw, str):
+        try: stocks_list = _json.loads(stocks_raw)
+        except: stocks_list = []
+    else:
+        stocks_list = stocks_raw or []
+    stocks_str = ", ".join(stocks_list[:2]) if stocks_list else ""
+    source = getattr(item, "source", "")
+    geo_region = getattr(item, "geo_region", "")
+
     for kw, conf in _TITLE_RULES_BULL:
         if kw.lower() in title:
             item.direction = Direction.BULL
             item.confidence = conf
             item.summary_1line = item.title[:50]
-            item.investment_signal = f"강세 신호: 제목에 '{kw}' 감지"
+            # 다양한 시그널 생성
+            parts = [f"'{kw}' 강세 신호"]
+            if stocks_str: parts.append(f"{stocks_str} 수혜 가능")
+            if geo_region: parts.append(f"지정학({geo_region}) 불구 호재")
+            item.investment_signal = ". ".join(parts)
             item.action_suggestion = "분할매수" if conf >= 0.75 else "관망"
-            item.risk_factor = "제목 기반 판정. 본문 확인 권장"
+            item.risk_factor = f"반대 방향 전환 시 {'종목 변동성 확대' if stocks_str else '시장 변동성 주의'}"
             return False
 
     for kw, conf in _TITLE_RULES_BEAR:
@@ -172,9 +188,12 @@ def _fallback_analyze(item: NewsItem) -> bool:
             item.direction = Direction.BEAR
             item.confidence = conf
             item.summary_1line = item.title[:50]
-            item.investment_signal = f"약세 신호: 제목에 '{kw}' 감지"
+            parts = [f"'{kw}' 약세 신호"]
+            if stocks_str: parts.append(f"{stocks_str} 하방 압력")
+            if geo_region: parts.append(f"{geo_region} 리스크 확대")
+            item.investment_signal = ". ".join(parts)
             item.action_suggestion = "비중축소" if conf >= 0.75 else "관망"
-            item.risk_factor = "하방 리스크 주의. 본문 확인 권장"
+            item.risk_factor = f"{'해당 섹터 추격 매도 금지' if stocks_str else '반등 가능성 열어두고 관망'}"
             return False
 
     # 2단계: 키워드 카운트 (제목 규칙 미매칭 시)
@@ -195,20 +214,25 @@ def _fallback_analyze(item: NewsItem) -> bool:
     item.confidence = min(0.95, 0.5 + abs(bull_count - bear_count) / max(total, 1) * 0.4)
     item.summary_1line = item.title[:50]
 
+    # 매칭된 키워드 수집
+    matched_bull = [kw for kw in BULL_KEYWORDS if kw.lower() in text][:2]
+    matched_bear = [kw for kw in BEAR_KEYWORDS if kw.lower() in text][:2]
+
     if item.direction == Direction.BULL:
-        item.investment_signal = "강세 시그널 감지 — 관련 섹터 매수 기회 탐색"
-        if item.confidence >= 0.7:
-            item.action_suggestion = "분할매수"
-        else:
-            item.action_suggestion = "관망"
-        item.risk_factor = "키워드 기반 판정. 반대 방향 전환 가능성 점검 필요"
+        kw_str = ", ".join(matched_bull) if matched_bull else "복합"
+        parts = [f"강세 키워드({kw_str})"]
+        if stocks_str: parts.append(f"{stocks_str} 관련")
+        item.investment_signal = " — ".join(parts) + ". 매수 기회 탐색"
+        item.action_suggestion = "분할매수" if item.confidence >= 0.7 else "관망"
+        item.risk_factor = f"{'해당 종목 변동성 점검' if stocks_str else '시장 방향 전환 가능성 점검'}"
     else:
-        item.investment_signal = "약세 시그널 감지 — 리스크 관리 필요"
-        if item.confidence >= 0.7:
-            item.action_suggestion = "비중축소"
-        else:
-            item.action_suggestion = "관망"
-        item.risk_factor = "하방 리스크 주의. 추격 매도 금지, 저점 확인 후 대응"
+        kw_str = ", ".join(matched_bear) if matched_bear else "복합"
+        parts = [f"약세 키워드({kw_str})"]
+        if stocks_str: parts.append(f"{stocks_str} 하방 압력")
+        if geo_region: parts.append(f"{geo_region} 리스크")
+        item.investment_signal = " — ".join(parts) + ". 리스크 관리"
+        item.action_suggestion = "비중축소" if item.confidence >= 0.7 else "관망"
+        item.risk_factor = f"{'해당 섹터 추격 매도 금지' if stocks_str else '반등 가능성 열어두고 관망'}"
 
     return False
 

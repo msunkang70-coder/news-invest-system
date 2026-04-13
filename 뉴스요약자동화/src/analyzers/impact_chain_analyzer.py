@@ -118,9 +118,12 @@ def analyze_impact_chains(item: NewsItem) -> List[ImpactChain]:
     text = f"{item.title} {item.snippet or ''} {(item.full_text or '')[:500]}".lower()
     matched_chains = []
 
+    title_lower = item.title.lower()
     for chain_name, template in CHAIN_TEMPLATES.items():
-        hits = sum(1 for kw in template["trigger_keywords"] if kw.lower() in text)
-        if hits >= 2:
+        hits_title = sum(1 for kw in template["trigger_keywords"] if kw.lower() in title_lower)
+        hits_text = sum(1 for kw in template["trigger_keywords"] if kw.lower() in text)
+        # 제목에서 1개 이상 or 본문에서 2개 이상이면 매칭
+        if hits_title >= 1 or hits_text >= 2:
             total_conf = 1.0
             for link in template["chain"]:
                 total_conf *= link.confidence
