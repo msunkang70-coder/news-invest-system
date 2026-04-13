@@ -89,8 +89,8 @@ st.caption(f"뉴스 {stats['news']}건 | 지표 {stats['indicators']}건 | BULL 
 st.divider()
 
 # ─── 탭 ───
-tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["📰 실시간 뉴스", "📈 종목 시그널", "📊 시장지표", "🌍 지정학 리스크", "🔔 알림 이력"]
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+    ["📰 실시간 뉴스", "📈 종목 시그널", "📊 시장지표", "🌍 지정학 리스크", "🔔 알림 이력", "📋 히스토리"]
 )
 
 # ═══════════════ 탭 1: 실시간 뉴스 ═══════════════
@@ -385,6 +385,104 @@ with tab5:
         st.metric("총 알림 건수", len(alerts))
     else:
         st.info("알림 이력이 없습니다. 파이프라인 실행 시 알림이 기록됩니다.")
+
+# ═══════════════ 탭 6: 히스토리 ═══════════════
+with tab6:
+    st.subheader("📋 데이터 히스토리 + 트렌드")
+
+    hist_days = st.selectbox("기간 선택", [7, 14, 30], format_func=lambda d: f"최근 {d}일", key="hist_days")
+
+    # 키워드 트렌드
+    conn_h = get_connection()
+    hist_news = [dict(r) for r in conn_h.execute(f"""
+        SELECT * FROM news_items
+        WHERE collected_time >= datetime('now', '-{hist_days} days', 'localtime')
+        ORDER BY collected_time DESC
+    """).fetchall()]
+    conn_h.close()
+
+    if hist_news:
+        from collections import Counter
+
+        # 키워드 트렌드
+        kw_counter = Counter()
+        for n in hist_news:
+            raw = n.get("matched_keywords", "[]")
+            try:
+                kws = json.loads(raw) if isinstance(raw, str) else raw
+            except Exception:
+                kws = []
+            kw_counter.update(kws)
+
+        if kw_counter:
+            st.subheader("🔑 키워드 트렌드")
+            kw_df = pd.DataFrame(kw_counter.most_common(15), columns=["키워드", "빈도"])
+            fig_kw = px.bar(kw_df, x="키워드", y="빈도", title=f"최근 {hist_days}일 키워드 빈도",
+                           color="빈도", color_continuous_scale="Blues")
+            st.plotly_chart(fig_kw, use_container_width=True)
+
+        # 종목 언급 빈도
+        stock_counter = Counter()
+        for n in hist_news:
+            raw = n.get("tagged_stocks", "[]")
+            try:
+                stocks = json.loads(raw) if isinstance(raw, str) else raw
+            except Exception:
+                stocks = []
+            stock_counter.update(stocks)
+
+        if stock_counter:
+            st.subheader("🏷️ 종목 언급 빈도")
+            st_df = pd.DataFrame(stock_counter.most_common(10), columns=["종목", "언급 수"])
+            fig_st = px.bar(st_df, x="종목", y="언급 수", title=f"최근 {hist_days}일 종목 언급",
+                           color="언급 수", color_continuous_scale="Greens")
+            st.plotly_chart(fig_st, use_container_width=True)
+
+        # 일별 뉴스 수
+        st.subheader("📊 일별 뉴스 수집량")
+        daily = Counter()
+        for n in hist_news:
+            day = (n.get("collected_time") or "")[:10]
+            if day:
+                daily[day] += 1
+        if daily:
+            daily_df = pd.DataFrame(sorted(daily.items()), columns=["날짜", "건수"])
+            fig_daily = px.bar(daily_df, x="날짜", y="건수", title=f"최근 {hist_days}일 일별 수집량")
+            st.plotly_chart(fig_daily, use_container_width=True)
+
+        # 스코어 분포
+        st.subheader("📈 영향도 분포")
+        score_bins = Counter()
+        for n in hist_news:
+            s = int(n.get("impact_score", 0))
+            score_bins[f"{s}-{s+1}"] = score_bins.get(f"{s}-{s+1}", 0) + 1
+        if score_bins:
+            sb_df = pd.DataFrame(sorted(score_bins.items()), columns=["점수 구간", "건수"])
+            fig_sb = px.bar(sb_df, x="점수 구간", y="건수", title="영향도 스코어 분포")
+            st.plotly_chart(fig_sb, use_container_width=True)
+
+        # CSV 내보내기 버튼
+        st.subheader("📥 데이터 내보내기")
+        col_exp1, col_exp2 = st.columns(2)
+        with col_exp1:
+            csv_news = pd.DataFrame(hist_news).to_csv(index=False).encode("utf-8-sig")
+            st.download_button("📥 뉴스 CSV 다운로드", csv_news,
+                               f"nias_news_{hist_days}d.csv", "text/csv")
+        with col_exp2:
+            conn_i = get_connection()
+            ind_data = [dict(r) for r in conn_i.execute(f"""
+                SELECT * FROM market_indicators
+                WHERE recorded_at >= datetime('now', '-{hist_days} days', 'localtime')
+            """).fetchall()]
+            conn_i.close()
+            if ind_data:
+                csv_ind = pd.DataFrame(ind_data).to_csv(index=False).encode("utf-8-sig")
+                st.download_button("📥 지표 CSV 다운로드", csv_ind,
+                                   f"nias_indicators_{hist_days}d.csv", "text/csv")
+
+        st.metric("총 뉴스", len(hist_news))
+    else:
+        st.info("히스토리 데이터가 없습니다. 파이프라인 운영 후 데이터가 축적됩니다.")
 
 # ─── 푸터 ───
 st.divider()
