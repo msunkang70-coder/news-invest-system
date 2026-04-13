@@ -235,10 +235,170 @@ def run_indicator_monitor():
 
 
 def run_daily_report():
-    """일일 리포트 생성 및 발송"""
+    """일일 리포트 생성 및 발송 (08:00/18:00 cron)"""
+    from datetime import datetime
+    from dataclasses import dataclass, field
+    from notifiers.email_notifier import build_daily_report_email
+
     logger.info("[리포트] 일일 리포트 생성 시작")
-    # TODO: 기존 daily_report.py 통합 + 시장지표/지정학 섹션 추가
-    logger.info("[리포트] 일일 리포트 생성 완료 (구현 예정)")
+
+    try:
+        # 1) 최근 뉴스 로드
+        from utils.db import get_recent_news, get_connection
+        news = get_recent_news(hours=12, limit=100)
+
+        if not news:
+            logger.info("[리포트] 뉴스 없음 — 리포트 스킵")
+            return
+
+        # 2) MarketVerdict 구성
+        import json
+
+        @dataclass
+        class _StockSignal:
+            stock_name: str = ""
+            net_score: float = 0.0
+            action: str = "관망"
+
+        @dataclass
+        class _Verdict:
+            overall_direction: object = None
+            overall_confidence: float = 0.5
+            market_mood: str = ""
+            total_bull: int = 0
+            total_bear: int = 0
+            stock_signals: dict = field(default_factory=dict)
+
+        from models.news_item import Direction
+
+        bull = sum(1 for n in news if n.get("direction") == "BULL")
+        bear = sum(1 for n in news if n.get("direction") == "BEAR")
+        total = bull + bear
+        ratio = bull / total if total > 0 else 0.5
+
+        verdict = _Verdict()
+        verdict.overall_direction = Direction.BULL if ratio > 0.5 else Direction.BEAR
+        verdict.overall_confidence = abs(ratio - 0.5) * 2
+        verdict.total_bull = bull
+        verdict.total_bear = bear
+        if ratio > 0.65:
+            verdict.market_mood = "강세장"
+        elif ratio < 0.35:
+            verdict.market_mood = "약세장"
+        else:
+            verdict.market_mood = "혼조세"
+
+        # 종목 시그널 집계
+        stock_scores = {}
+        for n in news:
+            raw = n.get("stock_impacts", "[]")
+            try:
+                impacts = json.loads(raw) if isinstance(raw, str) else raw
+            except Exception:
+                continue
+            for si in impacts:
+                name = si.get("stock", "")
+                if not name:
+                    continue
+                if name not in stock_scores:
+                    stock_scores[name] = {"bull": 0, "bear": 0}
+                w = si.get("intensity", 0.5) * n.get("impact_score", 5) / 10
+                if si.get("direction") == "BULL":
+                    stock_scores[name]["bull"] += w
+                else:
+                    stock_scores[name]["bear"] += w
+
+        for name, s in stock_scores.items():
+            net = round(s["bull"] - s["bear"], 2)
+            if net >= 3.0:
+                act = "적극매수"
+            elif net >= 1.5:
+                act = "분할매수"
+            elif net >= -0.5:
+                act = "관망"
+            elif net >= -3.0:
+                act = "비중축소"
+            else:
+                act = "매도검토"
+            verdict.stock_signals[name] = _StockSignal(name, net, act)
+
+        # 3) TOP 뉴스 → NewsItem-like 객체
+        @dataclass
+        class _NewsLike:
+            title: str = ""
+            impact_score: float = 0
+            direction: object = None
+            action_suggestion: str = ""
+
+        top_items = []
+        for n in sorted(news, key=lambda x: x.get("impact_score", 0), reverse=True)[:5]:
+            item = _NewsLike(
+                title=n.get("title", ""),
+                impact_score=n.get("impact_score", 0),
+                direction=Direction(n["direction"]) if n.get("direction") in ("BULL", "BEAR") else None,
+                action_suggestion=n.get("action_suggestion", ""),
+            )
+            top_items.append(item)
+
+        # 4) 시장지표 로드
+        conn = get_connection()
+        ind_rows = conn.execute(
+            "SELECT * FROM market_indicators ORDER BY recorded_at DESC LIMIT 10"
+        ).fetchall()
+        conn.close()
+
+        from models.market_indicator import MarketIndicator as MI, IndicatorCategory as IC
+        indicators = []
+        seen = set()
+        for r in ind_rows:
+            if r["ticker"] in seen:
+                continue
+            seen.add(r["ticker"])
+            indicators.append(MI(
+                ticker=r["ticker"], name=r["name"],
+                category=IC(r["category"]) if r["category"] else IC.VOLATILITY,
+                current_value=r["current_value"] or 0,
+                previous_close=r["previous_close"] or 0,
+                change_pct=r["change_pct"] or 0,
+            ))
+
+        # 5) 지정학 요약
+        geo_summary = {}
+        for n in news:
+            gl = n.get("geo_level")
+            gr = n.get("geo_region")
+            if gl and gr:
+                geo_summary[gr] = max(geo_summary.get(gr, 0), gl)
+
+        # 6) 이메일 빌드 + 발송
+        subject, html = build_daily_report_email(verdict, top_items, indicators, geo_summary or None)
+
+        if cfg.ALERT_EMAIL_TO:
+            result = email_notifier.send(cfg.ALERT_EMAIL_TO, subject, html)
+            if result:
+                logger.info(f"[리포트] 일일 리포트 발송 완료: {subject[:40]}")
+            else:
+                logger.error("[리포트] 일일 리포트 발송 실패")
+
+        # 7) Markdown 파일 저장
+        md_path = cfg.OUTPUT_DIR / f"daily_report_{datetime.now().strftime('%Y%m%d_%H%M')}.md"
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(f"# NIAS 일일 투자 리포트\n")
+            f.write(f"**{datetime.now().strftime('%Y-%m-%d %H:%M')}**\n\n")
+            f.write(f"## 시장 종합: {verdict.overall_direction.value} ({verdict.overall_confidence:.0%})\n")
+            f.write(f"BULL {bull}건 vs BEAR {bear}건 | {verdict.market_mood}\n\n")
+            f.write(f"## TOP 5 뉴스\n")
+            for i, t in enumerate(top_items, 1):
+                d = t.direction.value if t.direction else "?"
+                f.write(f"{i}. [{t.impact_score}] {d} {t.title[:60]}\n")
+            f.write(f"\n## 종목 시그널\n")
+            for name, ss in sorted(verdict.stock_signals.items(), key=lambda x: abs(x[1].net_score), reverse=True)[:10]:
+                f.write(f"- {name}: {ss.net_score:+.1f} → {ss.action}\n")
+
+        logger.info(f"[리포트] Markdown 저장: {md_path.name}")
+
+    except Exception as e:
+        logger.error(f"[리포트] 일일 리포트 생성 실패: {e}")
 
 
 def flush_alert_batches():
