@@ -139,14 +139,16 @@ div[data-testid="stExpander"] { border: none !important; background: transparent
 
 /* 5. 슬라이더/셀렉트 라벨 가독성 */
 label, .stSlider label, .stSelectbox label { color: #D1D5DB !important; font-size: 13px !important; font-weight: 600 !important; }
-.stSlider [data-testid="stTickBarMin"], .stSlider [data-testid="stTickBarMax"] { color: #7D8590 !important; }
-[data-baseweb="select"] { background: #1A1D24 !important; border: 1px solid #25292F !important; }
-[data-baseweb="select"] span, [data-baseweb="select"] div { color: #E5E7EB !important; }
-[data-baseweb="popover"] { background: #1A1D24 !important; }
-[data-baseweb="popover"] li { color: #E5E7EB !important; }
-[data-baseweb="popover"] li:hover { background: #25292F !important; }
-[data-baseweb="select"] svg { fill: #7D8590 !important; }
-[data-baseweb="input"] { background: #1A1D24 !important; color: #E5E7EB !important; border-color: #25292F !important; }
+.stSlider [data-testid="stTickBarMin"], .stSlider [data-testid="stTickBarMax"] { color: #9CA3AF !important; }
+
+/* 셀렉트박스 파스텔톤 */
+[data-baseweb="select"] { background: #1E2330 !important; border: 1px solid #334155 !important; border-radius: 10px !important; }
+[data-baseweb="select"] span, [data-baseweb="select"] div { color: #E2E8F0 !important; }
+[data-baseweb="select"] svg { fill: #94A3B8 !important; }
+[data-baseweb="popover"] { background: #1E2330 !important; border: 1px solid #334155 !important; border-radius: 10px !important; }
+[data-baseweb="popover"] li { color: #E2E8F0 !important; padding: 10px 14px !important; }
+[data-baseweb="popover"] li:hover { background: #2D3748 !important; }
+[data-baseweb="input"] { background: #1E2330 !important; color: #E2E8F0 !important; border-color: #334155 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -214,9 +216,8 @@ st.markdown(f'<div class="cap">강세(BULL) {bull}건 · 약세(BEAR) {bear}건 
 # ─── 3. 탭 (아이콘 + 명칭) ───
 t1, t2, t3, t4, t5 = st.tabs(["📰 뉴스", "📈 종목", "📊 지표", "🌍 지정학", "📋 히스토리"])
 
-# ── NEWS ──
+# ── NEWS (카테고리별 분류) ──
 with t1:
-    # 5. 필터 라벨 가독성 + 6. BULL/BEAR 의미 명확
     c1, c2 = st.columns([1, 1])
     with c1: ms = st.slider("최소 영향도 점수", 1.0, 10.0, 5.0, 0.5, key="ms")
     with c2: df = st.selectbox("시장 방향 필터", ["전체", "📈 강세 (BULL)", "📉 약세 (BEAR)"], key="df")
@@ -225,43 +226,77 @@ with t1:
     if "BULL" in df: fl = [n for n in fl if n.get("direction") == "BULL"]
     elif "BEAR" in df: fl = [n for n in fl if n.get("direction") == "BEAR"]
 
-    # 통일 카드 (hero/regular 구분 제거, opacity 페이드 제거)
-    for idx, item in enumerate(fl[:25]):
+    # 카테고리 분류 로직
+    def _categorize(item):
+        t = (item.get("title", "") + " " + (item.get("snippet", "") or "")).lower()
+        kw = " ".join(item.get("matched_keywords", []) if isinstance(item.get("matched_keywords"), list) else [])
+        t = t + " " + kw.lower()
+        if item.get("geo_level"):
+            return "🌍 지정학"
+        if any(k in t for k in ["금리", "rate", "fed", "fomc", "한은", "기준금리", "통화정책", "정책"]):
+            return "🏛️ 정책·금리"
+        if any(k in t for k in ["유가", "oil", "환율", "달러", "원달러", "금", "gold", "원자재", "commodity", "opec"]):
+            return "🛢️ 원자재·환율"
+        if any(k in t for k in ["gdp", "cpi", "인플레", "경기", "고용", "실업", "수출", "경제", "recession", "inflation"]):
+            return "📊 거시경제"
+        return "💼 산업·기업"
+
+    # 카테고리별 그룹핑
+    categories = {"📊 거시경제": [], "🏛️ 정책·금리": [], "💼 산업·기업": [], "🛢️ 원자재·환율": [], "🌍 지정학": []}
+    for item in fl:
+        cat = _categorize(item)
+        categories[cat].append(item)
+
+    CAT_COLORS = {
+        "📊 거시경제": "#1E293B",
+        "🏛️ 정책·금리": "#1E1B2E",
+        "💼 산업·기업": "#1B2E1E",
+        "🛢️ 원자재·환율": "#2E2A1B",
+        "🌍 지정학": "#2E1B1B",
+    }
+
+    def _render_news_card(item):
         sc = item.get("impact_score", 0)
         url = item.get("url", "")
         pub = item.get("published_time", "")
-        age = relative_time(pub)
         act = item.get("action_suggestion", "")
-        signal = item.get("investment_signal", "")
-
         act_p = f'<span class="p p-a">{act}</span>' if act and act != "관망" else ""
         link = f'<a href="{url}" target="_blank">원문↗</a>' if url and url.startswith("http") else ""
+        pub_date = str(pub)[:16].replace("T", " ") if pub else ""
+        stale = is_stale(pub, 24)
+        time_cls = "t-old" if stale else "t-new"
+        time_badge = f'<span class="{time_cls}">{pub_date}</span>' if pub_date else ""
 
-        # 4. 뉴스 일자 표기 (절대 날짜 + 상대 시간)
-        pub_date = ""
-        if pub:
-            try:
-                ps = str(pub)[:16].replace("T", " ")
-                pub_date = ps
-            except: pass
+        return f'''<div class="nc">
+            <div class="nc-t"><span class="p p-s">{sc}</span> {item["title"][:68]} {act_p}</div>
+            <div class="nc-m">{item.get("source","")} {time_badge} {link}</div>
+        </div>'''
 
-        if is_stale(pub, 24):
-            time_badge = f'<span class="t-old">{pub_date}</span>'
-        else:
-            time_badge = f'<span class="t-new">{pub_date or age}</span>' if (pub_date or age) else ""
+    for cat_name, cat_items in categories.items():
+        if not cat_items:
+            continue
 
-        st.markdown(f'''
-        <div class="nc">
-            <div class="nc-t"><span class="p p-s">{sc}</span> {item["title"][:70]} {act_p}</div>
-            <div class="nc-m"><span>{item.get("source","")}</span> {time_badge} {link}</div>
-        </div>''', unsafe_allow_html=True)
+        bg = CAT_COLORS.get(cat_name, "#1A1D24")
+        count = len(cat_items)
 
-        # 상위 3건만 펼치기
-        if idx < 3 and signal and "키워드 감지" not in signal:
-            with st.expander("시그널", expanded=False):
-                st.markdown(f"💡 {signal}")
-                if url and url.startswith("http"):
-                    st.link_button("원문", url)
+        # 카테고리 헤더
+        st.markdown(
+            f'<div style="background:{bg};padding:10px 16px;border-radius:10px;margin:16px 0 8px;">'
+            f'<span style="font-size:14px;font-weight:700;color:#E5E7EB;">{cat_name}</span>'
+            f'<span style="font-size:11px;color:#7D8590;margin-left:8px;">{count}건</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+        # 상위 3건 표시
+        for item in cat_items[:3]:
+            st.markdown(_render_news_card(item), unsafe_allow_html=True)
+
+        # 3건 초과 시 펼치기
+        if count > 3:
+            with st.expander(f"{cat_name} 전체 보기 (+{count - 3}건)", expanded=False):
+                for item in cat_items[3:]:
+                    st.markdown(_render_news_card(item), unsafe_allow_html=True)
 
     if not fl:
         st.info("뉴스 없음")
