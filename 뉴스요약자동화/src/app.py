@@ -146,41 +146,82 @@ col_news, col_geo = st.columns([3, 1])
 
 with col_news:
     st.markdown("##### 🏆 핵심 뉴스 TOP 3")
-    for n in top3:
+    for rank, n in enumerate(top3, 1):
         score = n.get("impact_score", 0)
         direction = n.get("direction", "")
-        title = n.get("title", "")[:65]
+        title = n.get("title", "")[:70]
         action = n.get("action_suggestion", "")
         source = n.get("source", "")
         url = n.get("url", "")
+        signal = n.get("investment_signal", "") or ""
+        risk = n.get("risk_factor", "") or ""
+        pub = n.get("published_time", "") or ""
+        geo_lv = n.get("geo_level")
+        geo_rg = n.get("geo_region", "")
+        chain = n.get("impact_chain", "") or ""
 
-        # 카드 스타일
+        # 종목
+        stocks_raw = n.get("tagged_stocks", "[]")
+        try:
+            stocks = json.loads(stocks_raw) if isinstance(stocks_raw, str) else stocks_raw
+        except Exception:
+            stocks = []
+        stocks_str = ", ".join(stocks[:3]) if stocks else ""
+
+        # 발행일
+        pub_str = ""
+        if pub:
+            try:
+                pub_str = pub[:10] if len(str(pub)) >= 10 else str(pub)
+            except Exception:
+                pass
+
+        # 카드 색상
         if direction == "BULL":
-            card_class = "card-bull"
-            d_icon = "📈"
+            border = "#22c55e"; bg = "#f0fdf4"; d_icon = "📈"; d_label = "강세"
         elif direction == "BEAR":
-            card_class = "card-bear"
-            d_icon = "📉"
+            border = "#ef4444"; bg = "#fef2f2"; d_icon = "📉"; d_label = "약세"
         else:
-            card_class = "card-neutral"
-            d_icon = "⚪"
+            border = "#94a3b8"; bg = "#f8fafc"; d_icon = "⚪"; d_label = "미판정"
 
-        # 점수 뱃지
-        if score >= 8:
-            badge_class = "score-high"
-        elif score >= 6.5:
-            badge_class = "score-mid"
-        else:
-            badge_class = "score-low"
+        badge_bg = "#ef4444" if score >= 8 else "#f59e0b" if score >= 6.5 else "#94a3b8"
 
-        link = f' <a href="{url}" target="_blank" style="font-size:11px;">원문</a>' if url and url.startswith("http") else ""
-        action_text = f' → <b>{action}</b>' if action and action != "관망" else ""
+        # 행동 뱃지
+        action_color = "#22c55e" if action in ("적극매수", "분할매수") else "#ef4444" if action in ("비중축소", "매도검토") else "#64748b"
+
+        # 시그널 (fallback 기본값 필터)
+        signal_html = ""
+        if signal and "키워드 감지" not in signal:
+            signal_html = f'<div style="margin-top:6px;font-size:12px;">💡 {signal[:60]}</div>'
+
+        # 종목 + 지정학
+        meta_parts = []
+        if stocks_str:
+            meta_parts.append(f"🏷 {stocks_str}")
+        if geo_lv:
+            meta_parts.append(f"🌍 L{geo_lv} {geo_rg}")
+        if chain:
+            meta_parts.append(f"🔗 {chain[:40]}")
+        meta_html = " &nbsp;|&nbsp; ".join(meta_parts)
+
+        link_html = f'<a href="{url}" target="_blank" style="color:{border};font-size:11px;text-decoration:none;">원문 보기 →</a>' if url and url.startswith("http") else ""
 
         st.markdown(
-            f'<div class="summary-card {card_class}">'
-            f'<span class="score-badge {badge_class}">{score}</span>'
-            f'{d_icon} {title}{action_text}'
-            f'<br><span style="color:#888;font-size:11px;">{source}{link}</span>'
+            f'<div style="background:{bg}; border-left:5px solid {border}; padding:14px 16px; border-radius:10px; margin-bottom:10px;">'
+            # 1행: 점수 + 제목
+            f'<div style="display:flex;align-items:center;gap:8px;">'
+            f'<span style="background:{badge_bg};color:white;padding:3px 10px;border-radius:14px;font-weight:bold;font-size:13px;">{score}</span>'
+            f'<span style="font-size:15px;font-weight:bold;line-height:1.3;">{d_icon} {title}</span>'
+            f'</div>'
+            # 2행: 방향 + 행동 + 출처 + 일자
+            f'<div style="margin-top:6px;font-size:12px;color:#555;">'
+            f'<span style="background:{action_color};color:white;padding:1px 8px;border-radius:10px;font-size:11px;">{d_label} → {action or "관망"}</span>'
+            f' &nbsp; {source} &nbsp; {pub_str} &nbsp; {link_html}'
+            f'</div>'
+            # 3행: 시그널
+            f'{signal_html}'
+            # 4행: 종목/지정학/체인
+            f'{"<div style=margin-top:4px;font-size:11px;color:#888;>" + meta_html + "</div>" if meta_html else ""}'
             f'</div>',
             unsafe_allow_html=True,
         )
