@@ -139,7 +139,9 @@ def build_weekly_email(report: dict) -> tuple[str, str]:
     top_html = ""
     for n in report["top5_news"][:5]:
         d = "📈" if n.get("direction") == "BULL" else "📉" if n.get("direction") == "BEAR" else "⚪"
-        top_html += f"<tr><td style='padding:6px;text-align:center;'>{n.get('impact_score',0)}</td><td style='padding:6px;'>{d} {n['title'][:55]}</td></tr>"
+        from utils.translator import translate_title
+        n_title = translate_title(n['title'])
+        top_html += f"<tr><td style='padding:6px;text-align:center;'>{n.get('impact_score',0)}</td><td style='padding:6px;'>{d} {n_title[:55]}</td></tr>"
 
     # 알림 통계
     alert_html = ""

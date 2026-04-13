@@ -651,8 +651,9 @@ def build_indicator_email(indicator) -> tuple[str, str]:
 
 
 def build_daily_report_email(verdict, top_items, indicators=None, geo_summary=None) -> tuple[str, str]:
-    """일�� 리포트 이메일 HTML 생성"""
+    """일일 리포트 이메일 HTML 생성"""
     from datetime import datetime
+    from utils.translator import translate_title
     today = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     direction = getattr(verdict, 'overall_direction', None)
@@ -665,12 +666,13 @@ def build_daily_report_email(verdict, top_items, indicators=None, geo_summary=No
     # TOP 5 뉴스
     top_news_html = ""
     for item in top_items[:5]:
-        d_emoji = "📈" if getattr(item, 'direction', None) and item.direction.value == "BULL" else "����"
+        d_emoji = "📈" if getattr(item, 'direction', None) and item.direction.value == "BULL" else "📉"
         score = getattr(item, 'impact_score', 0)
+        item_title = translate_title(getattr(item, 'title', ''))
         top_news_html += f"""
         <tr>
           <td style="padding:8px; text-align:center; font-weight:bold;">{score}</td>
-          <td style="padding:8px;">{d_emoji} {item.title[:60]}</td>
+          <td style="padding:8px;">{d_emoji} {item_title[:60]}</td>
           <td style="padding:8px;">{getattr(item, 'action_suggestion', '-')}</td>
         </tr>"""
 

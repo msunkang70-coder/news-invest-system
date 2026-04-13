@@ -36,6 +36,7 @@ from analyzers.summarizer import summarize_news, build_market_context
 from utils.dedup import deduplicate
 from utils.cache import UrlCache
 from utils.db import save_news_items, save_indicators, get_db_stats
+from utils.translator import translate_title
 from notifiers.alert_engine import AlertEngine
 from notifiers.email_notifier import GmailNotifier, build_urgent_email, build_indicator_email
 
@@ -182,7 +183,7 @@ def run_news_pipeline(sources: str = "all"):
         d = "BULL" if item.direction and item.direction.value == "BULL" else "BEAR" if item.direction else "?"
         geo = f" L{item.geo_level}" if item.geo_level else ""
         logger.info(
-            f"  TOP{i}: [{item.impact_score}]{geo} {item.title[:50]} "
+            f"  TOP{i}: [{item.impact_score}]{geo} {translate_title(item.title)[:50]} "
             f"({item.source}, {item.keyword_tier})"
         )
 

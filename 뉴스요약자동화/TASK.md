@@ -488,4 +488,5 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 | 04/13 | `aee1124` | QA 개선 3건: fallback 편향 수정(97%→15% BULL), threshold 6.5, 알림상한 10건, LLM TOP15 | summarizer.py, config.py, alert_engine.py |
 | 04/13 | `55b8372` | 영어 뉴스 한국어 자동 번역 (Google Translate, LLM 미소모). 이메일+Slack 적용 | translator.py, email_notifier.py, slack_notifier.py |
 | 04/13 | `89159ad` | Windows 시작 프로그램 자동 실행 등록 (start_nias.bat) | start_nias.bat |
-| 04/13 | 현재 | README.md 전면 개편 — 운영 가이드+트러블슈팅+유지보수 통합 | README.md |
+| 04/13 | `492b310` | README.md 전면 개편 — 운영 가이드+트러블슈팅+유지보수 통합 | README.md |
+| 04/13 | 현재 | 번역 누락 전면 수정 — 대시보드+일일리포트+주간리포트+콘솔 TOP5 모두 적용 | app.py, email_notifier.py, weekly_report.py, main.py |
