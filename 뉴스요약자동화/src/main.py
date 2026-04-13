@@ -27,6 +27,7 @@ from collectors.dart_collector import collect_dart_disclosures
 from collectors.economic_indicator import collect_fred_indicators, collect_bok_indicators
 from collectors.sns_collector import collect_sns_posts
 from collectors.sentiment_collector import collect_sentiment_indicators
+from collectors.ecos_collector import collect_ecos_indicators, collect_ecos_news
 from analyzers.keyword_filter import filter_by_keywords
 from analyzers.impact_scorer import score_impact
 from analyzers.geopolitical_classifier import classify_geopolitical
@@ -69,6 +70,7 @@ def run_news_pipeline(sources: str = "all"):
         ("DART", collect_dart_disclosures),
         ("FRED", collect_fred_indicators),
         ("한은", collect_bok_indicators),
+        ("ECOS뉴스", collect_ecos_news),
         ("SNS", collect_sns_posts),
     ]:
         try:
@@ -206,6 +208,13 @@ def run_indicator_monitor():
         indicators.extend(sentiments)
     except Exception as e:
         logger.warning(f"[지표] 심리지표 수집 실패: {e}")
+
+    # 한국은행 ECOS 거시지표
+    try:
+        ecos = collect_ecos_indicators()
+        indicators.extend(ecos)
+    except Exception as e:
+        logger.warning(f"[지표] ECOS 수집 실패: {e}")
 
     # 임계값 돌파 지표 로깅
     alert_worthy = [i for i in indicators if i.is_alert_worthy]

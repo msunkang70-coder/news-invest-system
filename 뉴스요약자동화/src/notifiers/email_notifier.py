@@ -433,13 +433,60 @@ def _build_indicator_assessment(indicator) -> str:
             short_action = "금리 민감 섹터(부동산, 유틸리티) 매수 보류"
             mid_action = "듀레이션 중립 유지. Fed 발언 모니터링"
 
+    elif ticker == "KR_CPI":
+        if val >= 3.0:
+            risk_grade = "상위 15% 수준 (물가 3%+ — 금리 인하 지연 가능)"
+            s1 = f"▸ CPI {val+0.5:.1f}%+ → 한은 금리 동결 장기화"
+            s2 = f"▸ CPI 2.5% 하회 → 금리 인하 기대 형성"
+            s3 = f"▸ 스태그플레이션 경계: 수출 감소 + 고물가 병존 시 리스크 확대"
+            short_action = "금리 민감주(부동산, 건설) 매수 보류"
+            mid_action = "물가 안정 확인 후 금리 인하 수혜주 분할 매수"
+        else:
+            risk_grade = "정상 범위 (물가 안정)"
+            s1 = f"▸ CPI 2.5% 이상 → 물가 부담 재부각"
+            s2 = f"▸ CPI 1.5% 이하 → 디플레 우려, 경기 둔화 신호"
+            s3 = f"▸ 현 수준 유지 → 금리 인하 여건 형성"
+            short_action = "정상 매매 가능"
+            mid_action = "금리 인하 수혜주(성장주, 리츠) 관심"
+
+    elif ticker == "KR_BASE_RATE":
+        risk_grade = f"기준금리 {val}% ({'고금리' if val >= 3.0 else '저금리'} 구간)"
+        s1 = f"▸ {val+0.25:.2f}% 인상 → 대출 부담 확대, 부동산 하방 압력"
+        s2 = f"▸ {val-0.25:.2f}% 인하 → 성장주/리츠 수혜, 소비 회복 기대"
+        s3 = f"▸ 동결 지속 → 시장 방향성 부재, 종목 선별 장세"
+        short_action = f"{'고금리 수혜주(은행, 보험) 관심' if val >= 3.0 else '금리 인하 수혜주(기술, 리츠) 관심'}"
+        mid_action = "한은 통화정책방향 회의(분기 1회) 전후 포지션 점검"
+
+    elif ticker == "KR_EXPORT":
+        if val >= 10:
+            risk_grade = "호조 (수출 증가율 10%+ — 경기 회복 신호)"
+            s1 = f"▸ 수출 {val+5:.0f}%+ → 반도체 중심 수출 호황 지속"
+            s2 = f"▸ 수출 0% 하회 → 글로벌 수요 둔화 전환"
+            s3 = f"▸ 환율 강세 전환 시 수출 채산성 약화 주의"
+            short_action = "수출주(반도체, 자동차, 배터리) 비중 확대"
+            mid_action = "수출 둔화 신호 시 내수주로 전환 준비"
+        elif val < 0:
+            risk_grade = f"부진 (수출 {val:.1f}% 감소 — 경기 하강 신호)"
+            s1 = f"▸ 수출 {val-5:.0f}% 이하 → 수출주 실적 악화 본격화"
+            s2 = f"▸ 수출 0% 회복 → 바닥 확인 신호"
+            s3 = f"▸ 원화 약세가 수출 채산성 부분 보완"
+            short_action = "수출주 신규 매수 보류. 방어주(통신, 유틸) 관심"
+            mid_action = "수출 반등 확인 후 수출주 분할 매수"
+        else:
+            risk_grade = "보통 (수출 완만한 회복)"
+            s1 = f"▸ ��출 10%+ → 본격 회복 진입"
+            s2 = f"▸ 수출 마이너스 전환 → 경기 둔화"
+            s3 = f"▸ 품목별 편차 확인 필요 (반도체 vs 일반 제조)"
+            short_action = "수출주 선별적 접근"
+            mid_action = "반도체 수출 데이터 별도 모니터링"
+
     else:
         risk_grade = f"{indicator.name} 변동 관찰 필요"
         s1 = f"▸ {indicator.name} {'상승' if chg > 0 else '하락'} 추세 확인 필요"
-        s2 = f"▸ 추세 지속 여부 1-2일 관찰"
+        s2 = f"▸ 추세 지속 여부 1-2일 관���"
         s3 = f"▸ 관련 이벤트 발생 시 변동 확대 가능"
-        short_action = "관련 섹터 모니터링. 신규 진입 보류"
-        mid_action = "추세 확인 후 판단"
+        short_action = "관련 섹터 모니���링. 신규 진입 보류"
+        mid_action = "��세 확인 후 판단"
 
     return f"""
         <div style="border:1px solid #e2e8f0; border-radius:8px; margin:16px 0; overflow:hidden;">
@@ -501,6 +548,19 @@ def _indicator_oneliner(indicator) -> str:
     elif ticker == "^GSPC":
         if abs(chg) >= 2: return f"S&P500 {'급등' if chg > 0 else '급락'}. 변동성 확대 구간"
         return "S&P500 정상 범위"
+    elif ticker == "KR_CPI":
+        if val >= 3.0: return f"CPI {val}%. 물가 부담, 금리 인하 지연 가능"
+        return f"CPI {val}%. 물가 안정"
+    elif ticker == "KR_BASE_RATE":
+        return f"기준금리 {val}%. {'동결 지속' if abs(chg) < 0.01 else '변동'}"
+    elif ticker == "KR_EXPORT":
+        if val >= 10: return f"수출 +{val:.0f}%. 경기 회복 신호"
+        if val < 0: return f"수출 {val:.1f}%. 경기 하강 신호"
+        return f"수출 +{val:.1f}%. 완만한 회복"
+    elif ticker == "KRW/USD_ECOS":
+        if val >= 1450: return f"원달러 {val:.0f}원. 외국인 수급 부담"
+        if val >= 1400: return f"원달러 {val:.0f}원. 경계 구간"
+        return f"원달러 {val:.0f}원. 안정"
     else:
         return f"{indicator.name} {chg:+.1f}% 변동. 모니터링 필요"
 
