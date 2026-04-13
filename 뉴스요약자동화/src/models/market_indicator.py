@@ -14,6 +14,7 @@ class IndicatorCategory(str, Enum):
     EQUITY_INDEX = "주가지수"
     NIGHT_FUTURES = "야간선물"
     SENTIMENT = "심리지표"
+    MACRO = "매크로"
 
 
 class ThresholdLevel(str, Enum):
