@@ -53,15 +53,15 @@ h1,h2,h3 { font-family: 'Inter', sans-serif !important; color: #F3F4F6 !importan
 .kv { font-size: 24px; font-weight: 800; color: #F3F4F6; letter-spacing: -0.5px; }
 .kd { font-size: 13px; font-weight: 600; margin-top: 6px; }
 
-/* ── news (통일 카드 — hero/regular 구분 제거) ── */
+/* ── news card (깔끔한 단일 톤) ── */
 .nc {
-    background: #1A1D24; border-radius: 12px; padding: 16px 20px;
-    border: 1px solid #25292F;
-    margin-bottom: 8px; transition: all 0.2s ease;
+    background: #15181E; border-radius: 10px; padding: 12px 16px;
+    border: 1px solid #1E2228;
+    margin-bottom: 6px; transition: all 0.2s ease;
 }
-.nc:hover { border-color: #3B3F47; transform: translateY(-1px); }
-.nc-t { font-size: 14px; font-weight: 600; color: #E5E7EB; line-height: 1.5; margin-bottom: 6px; }
-.nc-m { font-size: 12px; color: #7D8590; display: flex; align-items: center; gap: 8px; }
+.nc:hover { background: #1A1E26; border-color: #2A2F38; }
+.nc-t { font-size: 13px; font-weight: 600; color: #D1D5DB; line-height: 1.5; margin-bottom: 4px; }
+.nc-m { font-size: 11px; color: #6B7280; display: flex; align-items: center; gap: 8px; }
 .nc-m a { color: #6CA4E0; text-decoration: none; font-weight: 500; }
 .nc-m a:hover { color: #93C5FD; }
 
@@ -258,15 +258,16 @@ t1, t2, t3, t4, t5 = st.tabs(["📰 뉴스", "📈 종목", "📊 지표", "🌍
 
 # ── NEWS (카테고리별 분류) ──
 with t1:
+    # 1) 필터 — number_input으로 오류 방지
     c1, c2 = st.columns([1, 1])
-    with c1: ms = st.slider("최소 영향도 점수", 1.0, 10.0, 5.0, 0.5, key="ms")
+    with c1: ms = st.number_input("최소 영향도 점수", min_value=1.0, max_value=10.0, value=5.0, step=0.5, key="ms")
     with c2: df = st.selectbox("시장 방향 필터", ["전체", "📈 강세 (BULL)", "📉 약세 (BEAR)"], key="df")
 
     fl = [n for n in news if n.get("impact_score", 0) >= ms]
     if "BULL" in df: fl = [n for n in fl if n.get("direction") == "BULL"]
     elif "BEAR" in df: fl = [n for n in fl if n.get("direction") == "BEAR"]
 
-    # 카테고리 분류 로직
+    # 카테고리 분류
     def _categorize(item):
         t = (item.get("title", "") + " " + (item.get("snippet", "") or "")).lower()
         kw = " ".join(item.get("matched_keywords", []) if isinstance(item.get("matched_keywords"), list) else [])
@@ -281,19 +282,9 @@ with t1:
             return "📊 거시경제"
         return "💼 산업·기업"
 
-    # 카테고리별 그룹핑
     categories = {"📊 거시경제": [], "🏛️ 정책·금리": [], "💼 산업·기업": [], "🛢️ 원자재·환율": [], "🌍 지정학": []}
     for item in fl:
-        cat = _categorize(item)
-        categories[cat].append(item)
-
-    CAT_COLORS = {
-        "📊 거시경제": "#1E293B",
-        "🏛️ 정책·금리": "#1E1B2E",
-        "💼 산업·기업": "#1B2E1E",
-        "🛢️ 원자재·환율": "#2E2A1B",
-        "🌍 지정학": "#2E1B1B",
-    }
+        categories[_categorize(item)].append(item)
 
     def _render_news_card(item):
         sc = item.get("impact_score", 0)
@@ -303,53 +294,46 @@ with t1:
         act_p = f'<span class="p p-a">{act}</span>' if act and act != "관망" else ""
         link = f'<a href="{url}" target="_blank">원문↗</a>' if url and url.startswith("http") else ""
         pub_date = str(pub)[:16].replace("T", " ") if pub else ""
-        stale = is_stale(pub, 24)
-        time_cls = "t-old" if stale else "t-new"
+        time_cls = "t-old" if is_stale(pub, 24) else "t-new"
         time_badge = f'<span class="{time_cls}">{pub_date}</span>' if pub_date else ""
+        return (
+            f'<div class="nc">'
+            f'<div class="nc-t"><span class="p p-s">{sc}</span> {item["title"][:68]} {act_p}</div>'
+            f'<div class="nc-m">{item.get("source","")} {time_badge} {link}</div>'
+            f'</div>'
+        )
 
-        return f'''<div class="nc">
-            <div class="nc-t"><span class="p p-s">{sc}</span> {item["title"][:68]} {act_p}</div>
-            <div class="nc-m">{item.get("source","")} {time_badge} {link}</div>
-        </div>'''
-
-    def _render_category(cat_name, cat_items, bg):
-        """카테고리 블록 렌더링 (헤더 + 상위3 + 펼치기)"""
+    def _render_cat_box(cat_name, cat_items):
+        """카테고리 박스: 테두리로 묶기 + 고정 높이감"""
         count = len(cat_items)
         st.markdown(
-            f'<div style="background:{bg};padding:10px 16px;border-radius:10px;margin:0 0 8px;">'
-            f'<span style="font-size:14px;font-weight:700;color:#E5E7EB;">{cat_name}</span>'
-            f'<span style="font-size:11px;color:#7D8590;margin-left:8px;">{count}건</span>'
-            f'</div>',
+            f'<div style="border:1px solid #25292F; border-radius:12px; padding:16px; margin-bottom:14px; min-height:200px;">'
+            f'<div style="font-size:13px;font-weight:700;color:#D1D5DB;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #25292F;">'
+            f'{cat_name} <span style="color:#6B7280;font-weight:500;">{count}건</span></div>',
             unsafe_allow_html=True,
         )
-        for item in cat_items[:3]:
-            st.markdown(_render_news_card(item), unsafe_allow_html=True)
-        if count > 3:
-            with st.expander(f"전체 보기 (+{count - 3}건)", expanded=False):
-                for item in cat_items[3:]:
-                    st.markdown(_render_news_card(item), unsafe_allow_html=True)
+        if cat_items:
+            for item in cat_items[:3]:
+                st.markdown(_render_news_card(item), unsafe_allow_html=True)
+            if count > 3:
+                with st.expander(f"전체 보기 (+{count - 3}건)", expanded=False):
+                    for item in cat_items[3:]:
+                        st.markdown(_render_news_card(item), unsafe_allow_html=True)
+        else:
+            st.markdown('<p style="color:#4B5563;font-size:12px;padding:8px 0;">해당 뉴스 없음</p>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # 2열 배치: 거시+정책 | 산업+원자재 (상단), 지정학 (하단 전체)
-    top_left = [("📊 거시경제", categories["📊 거시경제"]), ("🛢️ 원자재·환율", categories["🛢️ 원자재·환율"])]
-    top_right = [("🏛️ 정책·금리", categories["🏛️ 정책·금리"]), ("💼 산업·기업", categories["💼 산업·기업"])]
-
+    # 2열 배치
     col_l, col_r = st.columns(2)
     with col_l:
-        for cat_name, cat_items in top_left:
-            if cat_items:
-                _render_category(cat_name, cat_items, CAT_COLORS[cat_name])
-                st.markdown('<div style="height:12px;"></div>', unsafe_allow_html=True)
+        _render_cat_box("📊 거시경제", categories["📊 거시경제"])
+        _render_cat_box("🛢️ 원자재·환율", categories["🛢️ 원자재·환율"])
     with col_r:
-        for cat_name, cat_items in top_right:
-            if cat_items:
-                _render_category(cat_name, cat_items, CAT_COLORS[cat_name])
-                st.markdown('<div style="height:12px;"></div>', unsafe_allow_html=True)
+        _render_cat_box("🏛️ 정책·금리", categories["🏛️ 정책·금리"])
+        _render_cat_box("💼 산업·기업", categories["💼 산업·기업"])
 
     # 지정학: 전체 너비
-    geo_items = categories["🌍 지정학"]
-    if geo_items:
-        st.markdown('<div style="height:8px;"></div>', unsafe_allow_html=True)
-        _render_category("🌍 지정학", geo_items, CAT_COLORS["🌍 지정학"])
+    _render_cat_box("🌍 지정학", categories["🌍 지정학"])
 
     if not fl:
         st.info("뉴스 없음")
