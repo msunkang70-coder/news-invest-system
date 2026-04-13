@@ -483,4 +483,5 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 | 04/13 | `7acea6c` | Google News URL 원문 링크 수정 (/rss/articles → /articles) | rss_collector.py |
 | 04/13 | `cffd17e` | 60sec_econ_signal ECOS API 이식 + 시그널 해석 매트릭스 (CPI/금리/수출/경상수지) | ecos_collector.py, email_notifier.py, main.py |
 | 04/13 | `3ec54b8` | DART+FRED+ECOS 3개 API 키 활성화. DART 32건, FRED 5건, ECOS 4건 실데이터 확인 | .env, dart_collector.py, market_indicator.py |
-| 04/13 | 현재 | Slack 웹훅 연동. 긴급뉴스+시장지표+지정학 3종 Block Kit 알림 | slack_notifier.py, main.py, config.py |
+| 04/13 | `1620212` | Slack 웹훅 연동. 긴급뉴스+시장지표+지정학 3종 Block Kit 알림 | slack_notifier.py, main.py, config.py |
+| 04/13 | 현재 | Slack 알림 강화 — 시간 추가, 행동 제안, 시나리오 핵심, 관련 종목 | slack_notifier.py |
