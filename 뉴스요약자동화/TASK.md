@@ -475,4 +475,6 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 | 04/12 | `3ec401c` | 유저 테스트 3개 이슈 해결 — 종목 태거(92건), 영향 체인 한국어 키워드, fallback 자동 적용 | main.py, stock_tagger.py, impact_chain_analyzer.py, summarizer.py |
 | 04/12 | `4e39ab1` | 이메일 정보 빈약성 해결 — 출처/시간/본문/종목/체인 풍부하게, HTML 정제 | email_notifier.py |
 | 04/12 | `c391d20` | 시장지표 이메일에 정량 평가 + 시나리오 + 행동 제안 추가 | email_notifier.py |
-| 04/13 | 현재 | 이메일 제목 개선 (이모지+한줄의미), preheader 추가, 시나리오 트리거값, 행동 제안 동사 강화, 정량 평가 상대 기준 | email_notifier.py |
+| 04/13 | `5a8fc51` | 이메일 제목 개선 (이모지+한줄의미), preheader 추가, 시나리오 트리거값, 행동 제안 동사 강화, 정량 평가 상대 기준 | email_notifier.py |
+| 04/13 | `3bc4c36` | Gemini 2.5 Flash LLM 분석 정상 동작 — max_tokens 2048, JSON 추출 강화 | summarizer.py |
+| 04/13 | 현재 | 긴급 속보 이메일 제목+preheader 개선, 불필요 문구 제거 | email_notifier.py |

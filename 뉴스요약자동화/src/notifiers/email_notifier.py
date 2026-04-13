@@ -281,12 +281,20 @@ def build_urgent_email(item) -> tuple[str, str]:
           </td>
         </tr>"""
 
-    subject = f"🚨 [{score}점] {title[:55]}"
+    # 제목: 이모지 + 제목 + 한줄 행동
+    action_hint = action if action and action != "관망" else signal[:25] if signal else ""
+    subject = f"🚨 [{score}점] {title[:45]}" + (f" | {action_hint}" if action_hint else "")
+
+    # preheader: Gmail 미리보기
+    preheader_text = signal[:60] if signal and signal != "분석 대기" else snippet[:60] if snippet else title[:60]
+    preheader = f'<span style="display:none!important;opacity:0;color:transparent;height:0;width:0;max-height:0;max-width:0;overflow:hidden;">{preheader_text}</span>'
+
     html = f"""
+    {preheader}
     <div style="font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', Arial, sans-serif; max-width: 620px; margin: 0 auto; background: #fff;">
       <div style="background: #dc3545; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-        <h2 style="margin:0; font-size:20px;">🚨 NIAS 긴급 속보 알림</h2>
-        <p style="margin:6px 0 0; opacity:0.9; font-size:13px;">알림 시각: {now} | 영향도: {'★' * int(score/2)}{'☆' * (5-int(score/2))} ({score}/10)</p>
+        <h2 style="margin:0; font-size:20px;">🚨 긴급 속보</h2>
+        <p style="margin:6px 0 0; opacity:0.9; font-size:13px;">{now} | 영향도 {score}/10 | {source}</p>
       </div>
 
       <div style="padding: 20px; border: 1px solid #ddd; border-top: none;">
