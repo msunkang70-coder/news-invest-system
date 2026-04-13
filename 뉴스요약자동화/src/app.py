@@ -297,31 +297,44 @@ with t1:
             <div class="nc-m">{item.get("source","")} {time_badge} {link}</div>
         </div>'''
 
-    for cat_name, cat_items in categories.items():
-        if not cat_items:
-            continue
-
-        bg = CAT_COLORS.get(cat_name, "#1A1D24")
+    def _render_category(cat_name, cat_items, bg):
+        """카테고리 블록 렌더링 (헤더 + 상위3 + 펼치기)"""
         count = len(cat_items)
-
-        # 카테고리 헤더
         st.markdown(
-            f'<div style="background:{bg};padding:10px 16px;border-radius:10px;margin:16px 0 8px;">'
+            f'<div style="background:{bg};padding:10px 16px;border-radius:10px;margin:0 0 8px;">'
             f'<span style="font-size:14px;font-weight:700;color:#E5E7EB;">{cat_name}</span>'
             f'<span style="font-size:11px;color:#7D8590;margin-left:8px;">{count}건</span>'
             f'</div>',
             unsafe_allow_html=True,
         )
-
-        # 상위 3건 표시
         for item in cat_items[:3]:
             st.markdown(_render_news_card(item), unsafe_allow_html=True)
-
-        # 3건 초과 시 펼치기
         if count > 3:
-            with st.expander(f"{cat_name} 전체 보기 (+{count - 3}건)", expanded=False):
+            with st.expander(f"전체 보기 (+{count - 3}건)", expanded=False):
                 for item in cat_items[3:]:
                     st.markdown(_render_news_card(item), unsafe_allow_html=True)
+
+    # 2열 배치: 거시+정책 | 산업+원자재 (상단), 지정학 (하단 전체)
+    top_left = [("📊 거시경제", categories["📊 거시경제"]), ("🛢️ 원자재·환율", categories["🛢️ 원자재·환율"])]
+    top_right = [("🏛️ 정책·금리", categories["🏛️ 정책·금리"]), ("💼 산업·기업", categories["💼 산업·기업"])]
+
+    col_l, col_r = st.columns(2)
+    with col_l:
+        for cat_name, cat_items in top_left:
+            if cat_items:
+                _render_category(cat_name, cat_items, CAT_COLORS[cat_name])
+                st.markdown('<div style="height:12px;"></div>', unsafe_allow_html=True)
+    with col_r:
+        for cat_name, cat_items in top_right:
+            if cat_items:
+                _render_category(cat_name, cat_items, CAT_COLORS[cat_name])
+                st.markdown('<div style="height:12px;"></div>', unsafe_allow_html=True)
+
+    # 지정학: 전체 너비
+    geo_items = categories["🌍 지정학"]
+    if geo_items:
+        st.markdown('<div style="height:8px;"></div>', unsafe_allow_html=True)
+        _render_category("🌍 지정학", geo_items, CAT_COLORS["🌍 지정학"])
 
     if not fl:
         st.info("뉴스 없음")
