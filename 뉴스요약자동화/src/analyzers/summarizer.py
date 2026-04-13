@@ -90,9 +90,8 @@ def summarize_with_llm(
         response = model.generate_content(
             full_prompt,
             generation_config={
-                "max_output_tokens": 1024,
-                "temperature": 0.2,
-                "response_mime_type": "application/json",
+                "max_output_tokens": 2048,
+                "temperature": 0.1,
             },
         )
 
@@ -102,6 +101,12 @@ def summarize_with_llm(
             text = text.split("```json")[1].split("```")[0].strip()
         elif "```" in text:
             text = text.split("```")[1].split("```")[0].strip()
+        # { } 범위 추출 (코드블록 없이 JSON만 온 경우)
+        if not text.startswith("{"):
+            start = text.find("{")
+            end = text.rfind("}") + 1
+            if start >= 0 and end > start:
+                text = text[start:end]
 
         result = json.loads(text)
 
