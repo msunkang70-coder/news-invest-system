@@ -479,4 +479,5 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 | 04/13 | `3bc4c36` | Gemini 2.5 Flash LLM 분석 정상 동작 — max_tokens 2048, JSON 추출 강화 | summarizer.py |
 | 04/13 | `c514521` | 긴급 속보 이메일 제목+preheader 개선, 불필요 문구 제거 | email_notifier.py |
 | 04/13 | `ef15f59` | 일일 리포트 자동 발송 구현 (run_daily_report), Markdown 저장 | main.py |
-| 04/13 | 현재 | CSV 내보내기 + 주간 성과 리포트 + 대시보드 히스토리 탭 | export.py, weekly_report.py, app.py |
+| 04/13 | `a9ee09d` | CSV 내보내기 + 주간 성과 리포트 + 대시보드 히스토리 탭 | export.py, weekly_report.py, app.py |
+| 04/13 | 현재 | Google News URL 원문 링크 수정 (/rss/articles → /articles) | rss_collector.py |

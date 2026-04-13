@@ -1,9 +1,12 @@
 """RSS 피드 수집기 — 뉴스 + 지정학 소스"""
 from __future__ import annotations
 
+import base64
 import logging
+import re
 from datetime import datetime
 from typing import List
+from urllib.parse import urlparse
 
 import feedparser
 
@@ -11,6 +14,17 @@ import config as cfg
 from models.news_item import NewsItem
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_google_news_url(gn_url: str) -> str:
+    """Google News RSS URL → 브라우저에서 열 수 있는 URL로 변환
+
+    /rss/articles/CBMi... → /articles/CBMi... 로 변환하면
+    브라우저에서 클릭 시 원본 기사로 자동 리다이렉트됨.
+    """
+    if "news.google.com/rss/articles/" in gn_url:
+        return gn_url.replace("/rss/articles/", "/articles/")
+    return gn_url
 
 
 def _parse_single_feed(source: dict) -> List[NewsItem]:
@@ -26,10 +40,14 @@ def _parse_single_feed(source: dict) -> List[NewsItem]:
             if hasattr(entry, "published_parsed") and entry.published_parsed:
                 pub_time = datetime(*entry.published_parsed[:6])
 
+            raw_url = entry.get("link", "")
+            # Google News URL → 원본 URL 리다이렉트 추적
+            url = _resolve_google_news_url(raw_url)
+
             item = NewsItem(
                 title=entry.get("title", "").strip(),
                 source=source["name"],
-                url=entry.get("link", ""),
+                url=url,
                 source_type="RSS",
                 published_time=pub_time,
                 snippet=entry.get("summary", "")[:500],
