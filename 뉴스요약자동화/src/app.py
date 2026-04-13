@@ -42,7 +42,7 @@ h1,h2,h3 { font-family: 'Inter', sans-serif !important; color: #F3F4F6 !importan
 .vd-y { background: rgba(234,179,8,0.1); color: #FDE68A; border: 1px solid rgba(234,179,8,0.15); }
 
 /* ── kpi grid (동일 크기) ── */
-.kgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.kgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
 .kcard {
     background: #1A1D24; border-radius: 14px; padding: 18px 16px;
     border: 1px solid #25292F;
@@ -136,6 +136,12 @@ h1,h2,h3 { font-family: 'Inter', sans-serif !important; color: #F3F4F6 !importan
 div[data-testid="stExpander"] { border: none !important; background: transparent !important; }
 [data-testid="stMetricValue"] { color: #F3F4F6 !important; }
 [data-testid="stMetricLabel"] { color: #7D8590 !important; }
+
+/* 5. 슬라이더/셀렉트 라벨 가독성 */
+label, .stSlider label, .stSelectbox label { color: #D1D5DB !important; font-size: 13px !important; font-weight: 600 !important; }
+.stSlider [data-testid="stTickBarMin"], .stSlider [data-testid="stTickBarMax"] { color: #7D8590 !important; }
+[data-baseweb="select"] { background: #1A1D24 !important; border-color: #25292F !important; color: #E5E7EB !important; }
+[data-baseweb="select"] * { color: #E5E7EB !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -167,42 +173,52 @@ gc = sum(1 for n in news if n.get("geo_level"))
 # ═══════════════════════════════════════════════════════════
 # HEADER
 # ═══════════════════════════════════════════════════════════
-st.markdown('<p style="font-size:11px;color:#B0B8C1;margin:0 0 4px;">NIAS v2.0</p>', unsafe_allow_html=True)
+# ─── 1. 제목 1.5배 ───
+st.markdown('<h1 style="font-size:28px;font-weight:800;color:#F3F4F6;margin:0 0 4px;letter-spacing:-0.5px;">◆ NIAS</h1>', unsafe_allow_html=True)
+st.markdown('<p style="font-size:12px;color:#7D8590;margin:0 0 16px;">News-Invest Alert System v2.0</p>', unsafe_allow_html=True)
 
 vc = "vd-y" if gc >= 3 and is_bull else "vd-g" if is_bull else "vd-r"
 vt = ("강세 우위 · 추세 매수 유효" + (" · 지정학 리스크 병존" if gc >= 3 else "")) if is_bull else ("약세 흐름 · 신규 매수 보류" + (" · 지정학 확대" if gc >= 3 else ""))
 st.markdown(f'<div class="vd {vc}">{"📈" if is_bull else "📉"} {vt}</div>', unsafe_allow_html=True)
 
-# ── KPI Grid (모든 지표 동일 크기) ──
+# ─── 2. 지표 2줄 (4+4) + 기준일자 ───
 if inds:
     h = '<div class="kgrid">'
     for i in inds[:8]:
         c = i.get("change_pct", 0) or 0
         lv = i.get("threshold_level", "정상")
-        dc = "#3FB950" if c > 0.01 else "#F85149" if c < -0.01 else "#484F58"
+        dc = "#3FB950" if c > 0.01 else "#F85149" if c < -0.01 else "#6B7280"
         ds = "+" if c > 0 else ""
         alert = lv in ("위험", "극단", "경고")
-        # 위험 지표만 약간 다른 배경
-        bg = "#1C1210" if alert else "#161B22"
-        h += f'<div class="kcard" style="background:{bg};"><div class="kl">{i["name"]}</div><div class="kv">{i["current_value"]}</div><div class="kd" style="color:{dc};">{ds}{c:.1f}%</div></div>'
+        bg = "#1F1214" if alert else "#1A1D24"
+        rec = i.get("recorded_at", "")
+        date_str = rec[:10] if rec and len(str(rec)) >= 10 else ""
+        h += (
+            f'<div class="kcard" style="background:{bg};">'
+            f'<div class="kl">{i["name"]}</div>'
+            f'<div class="kv">{i["current_value"]}</div>'
+            f'<div class="kd" style="color:{dc};">{ds}{c:.1f}%</div>'
+            f'<div style="font-size:9.5px;color:#4B5563;margin-top:3px;">{date_str}</div>'
+            f'</div>'
+        )
     h += '</div>'
     st.markdown(h, unsafe_allow_html=True)
 
-st.markdown(f'<div class="cap">BULL {bull} · BEAR {bear} · 뉴스 {stats["news"]} · {datetime.now().strftime("%H:%M")}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="cap">강세(BULL) {bull}건 · 약세(BEAR) {bear}건 · 총 뉴스 {stats["news"]}건 · 갱신 {datetime.now().strftime("%H:%M")}</div>', unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════════════════════
-# TABS
-# ═══════════════════════════════════════════════════════════
-t1, t2, t3, t4, t5 = st.tabs(["뉴스", "종목", "지표", "지정학", "히스토리"])
+# ─── 3. 탭 (아이콘 + 명칭) ───
+t1, t2, t3, t4, t5 = st.tabs(["📰 뉴스", "📈 종목", "📊 지표", "🌍 지정학", "📋 히스토리"])
 
 # ── NEWS ──
 with t1:
+    # 5. 필터 라벨 가독성 + 6. BULL/BEAR 의미 명확
     c1, c2 = st.columns([1, 1])
-    with c1: ms = st.slider("최소 점수", 1.0, 10.0, 5.0, 0.5, key="ms")
-    with c2: df = st.selectbox("방향", ["전체", "BULL", "BEAR"], key="df")
+    with c1: ms = st.slider("최소 영향도 점수", 1.0, 10.0, 5.0, 0.5, key="ms")
+    with c2: df = st.selectbox("시장 방향 필터", ["전체", "📈 강세 (BULL)", "📉 약세 (BEAR)"], key="df")
 
     fl = [n for n in news if n.get("impact_score", 0) >= ms]
-    if df != "전체": fl = [n for n in fl if n.get("direction") == df]
+    if "BULL" in df: fl = [n for n in fl if n.get("direction") == "BULL"]
+    elif "BEAR" in df: fl = [n for n in fl if n.get("direction") == "BEAR"]
 
     # 통일 카드 (hero/regular 구분 제거, opacity 페이드 제거)
     for idx, item in enumerate(fl[:25]):
@@ -216,11 +232,18 @@ with t1:
         act_p = f'<span class="p p-a">{act}</span>' if act and act != "관망" else ""
         link = f'<a href="{url}" target="_blank">원문↗</a>' if url and url.startswith("http") else ""
 
-        # 시간 뱃지 (opacity 대신 명시적)
+        # 4. 뉴스 일자 표기 (절대 날짜 + 상대 시간)
+        pub_date = ""
+        if pub:
+            try:
+                ps = str(pub)[:16].replace("T", " ")
+                pub_date = ps
+            except: pass
+
         if is_stale(pub, 24):
-            time_badge = f'<span class="t-old">{age}</span>'
+            time_badge = f'<span class="t-old">{pub_date}</span>'
         else:
-            time_badge = f'<span class="t-new">{age}</span>' if age else ""
+            time_badge = f'<span class="t-new">{pub_date or age}</span>' if (pub_date or age) else ""
 
         st.markdown(f'''
         <div class="nc">
