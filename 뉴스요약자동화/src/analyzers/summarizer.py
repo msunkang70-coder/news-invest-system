@@ -40,14 +40,24 @@ SYSTEM_PROMPT = """당신은 금융 뉴스 분석 전문가입니다. 주어진 
 
 # 키워드 기반 fallback
 BULL_KEYWORDS = [
-    "호실적", "상승", "급등", "surge", "beat", "upgrade", "bullish",
-    "growth", "성장", "흑자", "수혜", "호재", "사상최고", "상향",
-    "매수", "outperform", "rally", "breakthrough", "사상최대",
+    "호실적", "급등", "surge", "beat", "upgrade", "bullish",
+    "흑자", "수혜", "호재", "사상최고", "사상최대",
+    "outperform", "rally", "breakthrough", "record",
+    "수주", "수출 호조", "공급 계약", "점유율 확대",
+    "상승", "growth", "성장", "매수", "반등", "회복",
+    "호황", "역대", "최대", "최고", "수출 증가", "투자 확대",
+    "실적 개선", "이익 증가", "매출 증가", "흑자 전환",
+    "강세", "강화", "확대", "개선", "rise", "gain", "soar",
+    "optimism", "positive", "boost", "expand",
 ]
 BEAR_KEYWORDS = [
-    "적자", "하락", "급락", "plunge", "downgrade", "bearish",
-    "decline", "loss", "감소", "악재", "리스크", "하향", "위기",
-    "매도", "underperform", "crash", "제재", "불확실",
+    "적자", "하락", "급락", "폭락", "plunge", "downgrade", "bearish",
+    "decline", "loss", "감소", "악재", "하향",
+    "매도", "underperform", "crash",
+    "부진", "둔화", "감산", "철수", "중단",
+    "경기침체", "recession",
+    "slump", "selloff", "tumble",
+    "파업", "리콜", "소송",
 ]
 
 
@@ -125,13 +135,23 @@ def summarize_with_llm(
 
 
 def _fallback_analyze(item: NewsItem) -> bool:
-    """키워드 기반 fallback 분석"""
+    """키워드 기반 fallback 분석 (BEAR 편향 보정 적용)"""
     text = item.text_for_analysis.lower()
+    title = item.title.lower()
 
     bull_count = sum(1 for kw in BULL_KEYWORDS if kw.lower() in text)
     bear_count = sum(1 for kw in BEAR_KEYWORDS if kw.lower() in text)
 
-    if bull_count >= bear_count:
+    # 제목에 BEAR 키워드가 있으면 가중치 2배 (제목이 핵심)
+    title_bear = sum(1 for kw in BEAR_KEYWORDS if kw.lower() in title)
+    bear_count += title_bear
+
+    # 지정학 뉴스(L3+)는 BEAR 가산 (전쟁/제재 = 시장 부정적)
+    if getattr(item, "geo_level", None) and item.geo_level >= 3:
+        bear_count += 1
+
+    # 동점이면 BEAR (보수적 판단 — 리스크 과소평가 방지)
+    if bull_count > bear_count:
         item.direction = Direction.BULL
     else:
         item.direction = Direction.BEAR
@@ -139,9 +159,21 @@ def _fallback_analyze(item: NewsItem) -> bool:
     total = bull_count + bear_count
     item.confidence = min(0.95, 0.5 + abs(bull_count - bear_count) / max(total, 1) * 0.4)
     item.summary_1line = item.title[:50]
-    item.investment_signal = f"{'강세' if item.direction == Direction.BULL else '약세'} 키워드 감지"
-    item.action_suggestion = "관망"
-    item.risk_factor = "키워드 기반 분석 — LLM 분석 불가 상태"
+
+    if item.direction == Direction.BULL:
+        item.investment_signal = "강세 시그널 감지 — 관련 섹터 매수 기회 탐색"
+        if item.confidence >= 0.7:
+            item.action_suggestion = "분할매수"
+        else:
+            item.action_suggestion = "관망"
+        item.risk_factor = "키워드 기반 판정. 반대 방향 전환 가능성 점검 필요"
+    else:
+        item.investment_signal = "약세 시그널 감지 — 리스크 관리 필요"
+        if item.confidence >= 0.7:
+            item.action_suggestion = "비중축소"
+        else:
+            item.action_suggestion = "관망"
+        item.risk_factor = "하방 리스크 주의. 추격 매도 금지, 저점 확인 후 대응"
 
     return False
 
@@ -149,15 +181,29 @@ def _fallback_analyze(item: NewsItem) -> bool:
 def summarize_news(
     items: List[NewsItem],
     indicators: List[MarketIndicator] = None,
+    llm_limit: int = 15,
 ) -> List[NewsItem]:
-    """뉴스 목록 일괄 LLM 분석 (Rate Limit 관리)"""
+    """뉴스 목록 분석: TOP N건은 LLM, 나머지는 fallback
+
+    QA 개선: Free tier 일 20건 → TOP 15건만 LLM 호출.
+    impact_score 내림차순으로 정렬하여 고영향 뉴스 우선 분석.
+    """
     market_ctx = build_market_context(indicators)
     llm_count = 0
     fallback_count = 0
 
-    for i, item in enumerate(items):
+    # impact_score 높은 순으로 정렬 (LLM 우선 대상)
+    sorted_items = sorted(items, key=lambda x: x.impact_score, reverse=True)
+
+    for i, item in enumerate(sorted_items):
         if item.direction is not None:
             continue  # 이미 분석된 항목 스킵
+
+        # TOP llm_limit건만 LLM 시도, 나머지는 바로 fallback
+        if llm_count >= llm_limit:
+            _fallback_analyze(item)
+            fallback_count += 1
+            continue
 
         success = summarize_with_llm(item, market_ctx)
         if success:

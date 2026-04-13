@@ -234,7 +234,7 @@ CACHE_TTL_HOURS = 24
 TITLE_SIMILARITY_THRESHOLD = 0.7
 
 # ─────────────────────────── 스코어링 ───────────────────────────
-IMPACT_THRESHOLD = 5
+IMPACT_THRESHOLD = 6.5  # QA 개선: 5.0→6.5 (5-6점대 노이즈 제거)
 
 # ─────────────────────────── 스케줄러 ───────────────────────────
 SCHEDULE_CONFIG = {

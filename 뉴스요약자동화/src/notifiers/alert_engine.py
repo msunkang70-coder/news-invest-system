@@ -33,7 +33,7 @@ class AlertRule:
 
 
 class AlertEngine:
-    def __init__(self, rules: List[AlertRule] = None, max_daily_alerts: int = 20):
+    def __init__(self, rules: List[AlertRule] = None, max_daily_alerts: int = 10):  # QA 개선: 20→10
         self.rules = rules or self._default_rules()
         self.max_daily_alerts = max_daily_alerts
         self.cooldown_tracker: dict[str, datetime] = {}
