@@ -419,11 +419,16 @@ def flush_alert_batches():
 
 
 def _dispatch_alerts(alerts: list[dict]):
-    """알림 디스패치 (이메일/텔레그램)"""
+    """알림 디스패치 (이메일 + Slack)"""
+    from notifiers.slack_notifier import (
+        notify_urgent_news, notify_indicator_alert, notify_geopolitical
+    )
+
     for alert in alerts:
         item = alert["item"]
         channels = alert["channels"]
 
+        # 이메일
         if "email" in channels and cfg.ALERT_EMAIL_TO:
             if isinstance(item, NewsItem):
                 subject, html = build_urgent_email(item)
@@ -436,9 +441,17 @@ def _dispatch_alerts(alerts: list[dict]):
             if result:
                 logger.info(f"[알림] 이메일 발송: {alert['rule']}")
 
-        if "telegram" in channels and cfg.TELEGRAM_BOT_TOKEN:
-            # TODO: Telegram 발송 구현
-            logger.info(f"[알림] 텔레그램 발송 대기: {alert['rule']}")
+        # Slack (이메일+텔레그램 채널이면 Slack도 발송)
+        if cfg.SLACK_WEBHOOK_URL:
+            try:
+                if isinstance(item, NewsItem) and (item.geo_level or 0) >= 3:
+                    notify_geopolitical(item)
+                elif isinstance(item, NewsItem):
+                    notify_urgent_news(item)
+                elif isinstance(item, MarketIndicator):
+                    notify_indicator_alert(item)
+            except Exception as e:
+                logger.warning(f"[Slack] 발송 실패: {e}")
 
     alert_engine.save_history(alerts)
 
