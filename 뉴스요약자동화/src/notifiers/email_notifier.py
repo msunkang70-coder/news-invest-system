@@ -248,12 +248,13 @@ def _get_stocks_str(item) -> str:
 def build_urgent_email(item) -> tuple[str, str]:
     """긴급 속보 이메일 HTML 생성 (풍부한 정보 + 출처 + 시간)"""
     from datetime import datetime
+    from utils.translator import translate_title, translate_to_kr
 
     direction = getattr(item, "direction", None)
     d_emoji = "📈 강세" if direction and direction.value == "BULL" else "📉 약세" if direction and direction.value == "BEAR" else "⚪ 미판정"
     score = getattr(item, "impact_score", 0)
-    title = _clean_html(getattr(item, "title", ""))
-    snippet = _clean_html(getattr(item, "snippet", ""))[:300]
+    title = translate_title(_clean_html(getattr(item, "title", "")))
+    snippet = translate_to_kr(_clean_html(getattr(item, "snippet", ""))[:300])
     source = getattr(item, "source", "미상")
     source_type = getattr(item, "source_type", "RSS")
     url = getattr(item, "url", "")

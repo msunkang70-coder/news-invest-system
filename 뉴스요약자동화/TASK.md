@@ -485,4 +485,5 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 | 04/13 | `3ec54b8` | DART+FRED+ECOS 3개 API 키 활성화. DART 32건, FRED 5건, ECOS 4건 실데이터 확인 | .env, dart_collector.py, market_indicator.py |
 | 04/13 | `1620212` | Slack 웹훅 연동. 긴급뉴스+시장지표+지정학 3종 Block Kit 알림 | slack_notifier.py, main.py, config.py |
 | 04/13 | `ef2f055` | Slack+이메일 발행 일자 부각 — 제목에 (MM/DD), 본문 굵게, Slack 알림 강화 | slack_notifier.py, email_notifier.py |
-| 04/13 | 현재 | QA 개선 3건: fallback 편향 수정(97%→15% BULL), threshold 6.5, 알림상한 10건, LLM TOP15 | summarizer.py, config.py, alert_engine.py |
+| 04/13 | `aee1124` | QA 개선 3건: fallback 편향 수정(97%→15% BULL), threshold 6.5, 알림상한 10건, LLM TOP15 | summarizer.py, config.py, alert_engine.py |
+| 04/13 | 현재 | 영어 뉴스 한국어 자동 번역 (Google Translate, LLM 미소모). 이메일+Slack 적용 | translator.py, email_notifier.py, slack_notifier.py |

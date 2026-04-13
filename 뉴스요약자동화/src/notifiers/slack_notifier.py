@@ -61,6 +61,8 @@ def send_slack(text: str, blocks: list = None) -> bool:
 
 def notify_urgent_news(item: NewsItem) -> bool:
     """긴급 뉴스 Slack 알림 (시간 + 행동 + 시나리오)"""
+    from utils.translator import translate_title
+
     score = getattr(item, "impact_score", 0)
     direction = item.direction.value if item.direction else "?"
     d_emoji = ":chart_with_upwards_trend:" if direction == "BULL" else ":chart_with_downwards_trend:"
@@ -69,6 +71,8 @@ def notify_urgent_news(item: NewsItem) -> bool:
     risk = getattr(item, "risk_factor", "") or ""
     url = getattr(item, "url", "")
     pub_time = _fmt_time(getattr(item, "published_time", None))
+    # 영어 제목 한국어 번역
+    item_title = translate_title(item.title)
 
     # 관련 종목
     import json
@@ -83,7 +87,7 @@ def notify_urgent_news(item: NewsItem) -> bool:
     blocks = [
         {
             "type": "header",
-            "text": {"type": "plain_text", "text": f":rotating_light: [{score}점] ({pub_time}) {item.title[:45]}", "emoji": True}
+            "text": {"type": "plain_text", "text": f":rotating_light: [{score}점] ({pub_time}) {item_title[:45]}", "emoji": True}
         },
         {
             "type": "context",
@@ -126,7 +130,7 @@ def notify_urgent_news(item: NewsItem) -> bool:
             "elements": [{"type": "button", "text": {"type": "plain_text", "text": ":newspaper: 원문 보기", "emoji": True}, "url": url}]
         })
 
-    return send_slack(f":rotating_light: [{score}점] ({pub_time}) {item.title[:45]}", blocks)
+    return send_slack(f":rotating_light: [{score}점] ({pub_time}) {item_title[:45]}", blocks)
 
 
 def notify_indicator_alert(indicator: MarketIndicator) -> bool:
@@ -216,8 +220,10 @@ def notify_indicator_alert(indicator: MarketIndicator) -> bool:
 
 def notify_geopolitical(item: NewsItem) -> bool:
     """지정학 Slack 알림 (시간 + 행동 + 영향 체인)"""
+    from utils.translator import translate_title
     level = item.geo_level or 0
     region = item.geo_region or "미확인"
+    item_title = translate_title(item.title)
     level_names = {1: "긴장", 2: "긴장 고조", 3: "무력 시위", 4: "무력 충돌", 5: "전면 위기"}
     level_bar = {1: ":green_square:", 2: ":yellow_square:", 3: ":orange_square:", 4: ":red_square:", 5: ":black_large_square:"}
 
@@ -237,7 +243,7 @@ def notify_geopolitical(item: NewsItem) -> bool:
     blocks = [
         {
             "type": "header",
-            "text": {"type": "plain_text", "text": f":earth_asia: [L{level}] ({pub_time}) {region} — {item.title[:35]}", "emoji": True}
+            "text": {"type": "plain_text", "text": f":earth_asia: [L{level}] ({pub_time}) {region} — {item_title[:35]}", "emoji": True}
         },
         {
             "type": "context",
@@ -271,4 +277,4 @@ def notify_geopolitical(item: NewsItem) -> bool:
             "elements": [{"type": "button", "text": {"type": "plain_text", "text": ":newspaper: 원문 보기", "emoji": True}, "url": url}]
         })
 
-    return send_slack(f":earth_asia: [L{level}] ({pub_time}) {region} {item.title[:35]}", blocks)
+    return send_slack(f":earth_asia: [L{level}] ({pub_time}) {region} {item_title[:35]}", blocks)
