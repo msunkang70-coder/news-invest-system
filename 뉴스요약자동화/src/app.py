@@ -140,8 +140,13 @@ div[data-testid="stExpander"] { border: none !important; background: transparent
 /* 5. 슬라이더/셀렉트 라벨 가독성 */
 label, .stSlider label, .stSelectbox label { color: #D1D5DB !important; font-size: 13px !important; font-weight: 600 !important; }
 .stSlider [data-testid="stTickBarMin"], .stSlider [data-testid="stTickBarMax"] { color: #7D8590 !important; }
-[data-baseweb="select"] { background: #1A1D24 !important; border-color: #25292F !important; color: #E5E7EB !important; }
-[data-baseweb="select"] * { color: #E5E7EB !important; }
+[data-baseweb="select"] { background: #1A1D24 !important; border: 1px solid #25292F !important; }
+[data-baseweb="select"] span, [data-baseweb="select"] div { color: #E5E7EB !important; }
+[data-baseweb="popover"] { background: #1A1D24 !important; }
+[data-baseweb="popover"] li { color: #E5E7EB !important; }
+[data-baseweb="popover"] li:hover { background: #25292F !important; }
+[data-baseweb="select"] svg { fill: #7D8590 !important; }
+[data-baseweb="input"] { background: #1A1D24 !important; color: #E5E7EB !important; border-color: #25292F !important; }
 </style>
 """, unsafe_allow_html=True)
 
