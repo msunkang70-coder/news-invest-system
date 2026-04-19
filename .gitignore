@@ -29,6 +29,11 @@ Thumbs.db
 
 # Cache
 url_cache.json
+# DART corp codes — 일 단위 자동 재다운로드되는 11MB 바이너리 캐시
+뉴스요약자동화/docs_cache/*.pkl
+
+# Claude Code 로컬 설정 (사용자별 다름, 공유 부적합)
+.claude/
 
 # Backup (already archived)
 _backup_v1/

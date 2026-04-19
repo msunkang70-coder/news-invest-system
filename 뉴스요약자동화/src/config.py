@@ -122,9 +122,8 @@ RSS_SOURCES_GLOBAL_DIRECT = [
     {"name": "Al Jazeera", "url": "https://www.aljazeera.com/xml/rss/all.xml", "region": "GLOBAL"},
     {"name": "Guardian World", "url": "https://www.theguardian.com/world/rss", "region": "GLOBAL"},
     {"name": "Guardian Business", "url": "https://www.theguardian.com/business/rss", "region": "GLOBAL"},
-    # Reuters 직접 피드는 간헐적 응답 — 유지하되 주 수집은 Google News 경유 RSS_SOURCES_GLOBAL 쪽이 담당
-    {"name": "Reuters Top News", "url": "https://feeds.reuters.com/reuters/topNews", "region": "GLOBAL"},
-    {"name": "Reuters World Direct", "url": "https://feeds.reuters.com/Reuters/worldNews", "region": "GLOBAL"},
+    # Reuters 직접 피드(feeds.reuters.com) 제거: 최근 5사이클 0건 수집, 실질 폐쇄 추정.
+    # Reuters 뉴스는 RSS_SOURCES_GLOBAL의 "Reuters World" (Google News 경유)로 수집됨.
     {"name": "NYT World", "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", "region": "GLOBAL"},
 ]
 
