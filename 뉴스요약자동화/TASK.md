@@ -512,6 +512,7 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 | 04/19 | (세션) | 중기안 공개 질문 7개 전원 결정 완료 — Q1 severity≥3만 LLM / Q2 대체 가설 접힘 / Q3 주간 자동 / Q4 YAML 직접 / Q5 completeness 주 기준 / Q6 기본 가중치 / Q7 초기 경계 + 2주 후 재평가 | docs/MIDTERM_DESIGN.md |
 | 04/19 | (세션) | **Phase 7 착수** — 중기안 Event Taxonomy 초안 작성. 7 카테고리(geopolitical·energy_supply·supply_chain·monetary_policy·fiscal_policy·earnings_shock·liquidity_event) × 각 3~5 서브타입 + market_impact_vector | config/event_taxonomy.yaml (신규) |
 | 04/19 | (세션) | **Phase 7 Cause Taxonomy 초안** — 3 카테고리(energy_supply·geopolitical·monetary_policy) × 각 structural 4 + trigger 4~5 + alternative 3 가설. 총 35 가설. hypothesis 기반 구조(leading ≠ 확정) 반영. indicators_check(VIX/CL_F/TNX/KRW_USD 조건), disqualifying_indicators(가설 약화 조건) 포함 | config/cause_taxonomy.yaml (신규) |
+| 04/19 | (세션) | **일일 알림 상한 재설계** — 오늘 12:57~14:00 사이 10건 상한 소진으로 14:00 이후 6시간 반 동안 전체 차단되는 이슈 확인. 조치: (1) `max_daily_alerts` 10→20 (fallback 통계용으로 강등) (2) 카테고리 카운터(`category_counts`) + `CATEGORY_LIMITS` dict(urgent 6 / high_impact 5 / watchlist 5 / indicator 5 / geopolitical 10 / event_candidate 5 / market_alert 10 / other 5, 총 51) 도입 (3) `daily_count>=max` 전체 차단 로직 제거 (4) 카테고리 상한 초과 시 하위 룰(다른 카테고리)로 fallthrough — 쿨다운 차단만 break 유지 | alert_engine.py |
 
 ---
 

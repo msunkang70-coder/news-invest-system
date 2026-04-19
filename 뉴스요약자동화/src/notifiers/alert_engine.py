@@ -40,15 +40,62 @@ class AlertEngine:
         "관심종목", "경제지표", "고영향뉴스",
     ]
 
-    def __init__(self, rules: List[AlertRule] = None, max_daily_alerts: int = 10):  # QA 개선: 20→10
+    # 룰 이름 → 카테고리 매핑 (카테고리별 일일 상한용)
+    _RULE_TO_CATEGORY: dict[str, str] = {
+        "긴급속보": "urgent",
+        "고영향뉴스": "high_impact",
+        "관심종목": "watchlist",
+        "경제지표": "indicator",
+        "지정학_L3": "geopolitical",
+        "지정학_L4": "geopolitical",
+        "이벤트후보": "event_candidate",
+        "VIX_경고": "market_alert",
+        "VIX_패닉": "market_alert",
+        "환율_급변": "market_alert",
+        "유가_급변": "market_alert",
+        "국채_급변": "market_alert",
+        "야간선물_급변": "market_alert",
+    }
+
+    # 카테고리별 일일 상한 — 한 카테고리 소진이 다른 카테고리를 막지 않음
+    # 총합 51건이지만 전체 차단 없음. max_daily_alerts는 fallback 통계용으로만 유지.
+    CATEGORY_LIMITS: dict[str, int] = {
+        "urgent": 6,
+        "high_impact": 5,
+        "watchlist": 5,
+        "indicator": 5,
+        "geopolitical": 10,
+        "event_candidate": 5,
+        "market_alert": 10,
+        "other": 5,
+    }
+
+    def __init__(self, rules: List[AlertRule] = None, max_daily_alerts: int = 20):
+        # max_daily_alerts 는 fallback 통계·로그용 상한 (차단에는 사용 안 함, 카테고리별 상한이 주 기준)
         self.rules = rules or self._default_rules()
         self.max_daily_alerts = max_daily_alerts
         self.cooldown_tracker: dict[str, datetime] = {}
         self.batch_queue: dict[str, dict] = {}
-        self.daily_count = 0
+        self.daily_count = 0  # 전체 누적 카운터 (fallback 통계)
+        self.category_counts: dict[str, int] = {}  # 카테고리별 카운터 (차단 기준)
         self.daily_reset_date = datetime.now().date()
         self.history_path = cfg.DATA_DIR / "alert_history.json"
         self.alert_history: list[dict] = []
+
+    def _category_of(self, rule: AlertRule) -> str:
+        """룰 → 카테고리 이름"""
+        return self._RULE_TO_CATEGORY.get(rule.name, "other")
+
+    def _check_category_limit(self, rule: AlertRule) -> bool:
+        """해당 카테고리의 일일 상한 여유가 있으면 True"""
+        cat = self._category_of(rule)
+        limit = self.CATEGORY_LIMITS.get(cat, 5)
+        return self.category_counts.get(cat, 0) < limit
+
+    def _bump_category(self, rule: AlertRule) -> None:
+        """발동 성공 시 카테고리 카운터 증가"""
+        cat = self._category_of(rule)
+        self.category_counts[cat] = self.category_counts.get(cat, 0) + 1
 
     def _default_rules(self) -> List[AlertRule]:
         """13종 기본 알림 룰"""
@@ -112,8 +159,14 @@ class AlertEngine:
                     any_condition_matched = True
                     if not self._check_cooldown(rule, item):
                         break  # 쿨다운 중이면 하위 룰로 폴스루하지 않음 (중복 알림 방지)
-                    if self.daily_count >= self.max_daily_alerts:
-                        break
+                    # 전체 차단 로직 제거 — 카테고리별 상한 초과 시 하위 룰(다른 카테고리)로 fallthrough
+                    if not self._check_category_limit(rule):
+                        cat = self._category_of(rule)
+                        logger.info(
+                            f"[알림] 카테고리 '{cat}' 일일 상한 {self.CATEGORY_LIMITS.get(cat, 5)} 도달 "
+                            f"— 하위 룰(다른 카테고리)로 fallthrough"
+                        )
+                        continue
                     alert = {
                         "rule": rule.name,
                         "channels": rule.channels,
@@ -124,6 +177,7 @@ class AlertEngine:
                     if rule.batch_window_minutes == 0:
                         alerts.append(alert)
                         self.daily_count += 1
+                        self._bump_category(rule)
                         self._record_cooldown(rule, item)
                     else:
                         self._add_to_batch(rule, alert)
@@ -148,7 +202,7 @@ class AlertEngine:
         return alerts
 
     def evaluate_indicators(self, indicators: List[MarketIndicator]) -> List[dict]:
-        """시장지표에 대해 알림 룰 평가"""
+        """시장지표에 대해 알림 룰 평가 — 카테고리별 상한 적용, 전체 차단 없음"""
         self._check_daily_reset()
         alerts = []
 
@@ -158,18 +212,28 @@ class AlertEngine:
 
             for rule in self.rules:
                 try:
-                    if rule.condition(ind):
-                        if self._check_cooldown(rule, ind) and self.daily_count < self.max_daily_alerts:
-                            alert = {
-                                "rule": rule.name,
-                                "channels": rule.channels,
-                                "template": rule.template,
-                                "item": ind,
-                                "timestamp": datetime.now().isoformat(),
-                            }
-                            alerts.append(alert)
-                            self.daily_count += 1
-                            self._record_cooldown(rule, ind)
+                    if not rule.condition(ind):
+                        continue
+                    if not self._check_cooldown(rule, ind):
+                        continue
+                    if not self._check_category_limit(rule):
+                        cat = self._category_of(rule)
+                        logger.info(
+                            f"[알림] 카테고리 '{cat}' 일일 상한 {self.CATEGORY_LIMITS.get(cat, 5)} 도달 "
+                            f"— {rule.name} 차단 (같은 카테고리만 막힘)"
+                        )
+                        continue
+                    alert = {
+                        "rule": rule.name,
+                        "channels": rule.channels,
+                        "template": rule.template,
+                        "item": ind,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                    alerts.append(alert)
+                    self.daily_count += 1
+                    self._bump_category(rule)
+                    self._record_cooldown(rule, ind)
                 except Exception:
                     pass
 
@@ -224,10 +288,11 @@ class AlertEngine:
         self.batch_queue[rule.name]["items"].append(alert)
 
     def _check_daily_reset(self):
-        """일일 카운트 리셋"""
+        """일일 카운트 리셋 — 전체 합계 + 카테고리별 카운터 모두 리셋"""
         today = datetime.now().date()
         if today != self.daily_reset_date:
             self.daily_count = 0
+            self.category_counts = {}
             self.daily_reset_date = today
 
     def save_history(self, alerts: List[dict]) -> None:
