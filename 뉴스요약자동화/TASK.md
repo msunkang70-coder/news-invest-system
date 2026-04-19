@@ -511,6 +511,7 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 | 04/19 | `d70e87b` | KPI.md 섹션 8 신규 — Phase 6 단기안 12시간 실측 데이터 (Fallback 510건·30.7%·L3 63%, geo_level 98.2%, missed_events 0건) | KPI.md |
 | 04/19 | (세션) | 중기안 공개 질문 7개 전원 결정 완료 — Q1 severity≥3만 LLM / Q2 대체 가설 접힘 / Q3 주간 자동 / Q4 YAML 직접 / Q5 completeness 주 기준 / Q6 기본 가중치 / Q7 초기 경계 + 2주 후 재평가 | docs/MIDTERM_DESIGN.md |
 | 04/19 | (세션) | **Phase 7 착수** — 중기안 Event Taxonomy 초안 작성. 7 카테고리(geopolitical·energy_supply·supply_chain·monetary_policy·fiscal_policy·earnings_shock·liquidity_event) × 각 3~5 서브타입 + market_impact_vector | config/event_taxonomy.yaml (신규) |
+| 04/19 | (세션) | **Phase 7 Cause Taxonomy 초안** — 3 카테고리(energy_supply·geopolitical·monetary_policy) × 각 structural 4 + trigger 4~5 + alternative 3 가설. 총 35 가설. hypothesis 기반 구조(leading ≠ 확정) 반영. indicators_check(VIX/CL_F/TNX/KRW_USD 조건), disqualifying_indicators(가설 약화 조건) 포함 | config/cause_taxonomy.yaml (신규) |
 
 ---
 
@@ -546,9 +547,10 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 **Phase 7 진행 현황 (+1~2주):**
 - [x] Task 7.1 — 중기안 공개 질문 7개 결정 (Q1 severity≥3 / Q2 접힘 / Q3 주간 자동 / Q4 YAML 직접 / Q5 completeness / Q6 기본값 / Q7 초기값+2주 재평가)
 - [x] Task 7.2 — Event Taxonomy YAML 정의 (7 카테고리, 2026-04-19 초안)
-- [ ] Task 7.3 — Cause Taxonomy YAML 정의 (energy_supply·geopolitical·monetary_policy 샘플 시작)
+- [x] Task 7.3 — Cause Taxonomy YAML 정의 (energy_supply·geopolitical·monetary_policy 3 카테고리 × 각 structural 4 + trigger 4~5 + alternative 3 가설. 총 35 가설)
 - [ ] Task 7.4 — missed_events 데이터 1~2주 축적 (현재 0건, 시간 소요)
 - [ ] Task 7.5 — 단기안 튜닝 (축적 데이터 기반)
+- [ ] Task 7.6 — Phase 8+ 카테고리 Cause Taxonomy 확장 (supply_chain/fiscal_policy/earnings_shock/liquidity_event)
 
 **Phase 8~11은 Phase 7 완료 후 순차 착수 (아래 원문 유지):**
 

@@ -1,0 +1,527 @@
+# Cause Taxonomy — NIAS 중기안 Phase 9 입력 (Cause Analyzer)
+#
+# 설계 원칙 (MIDTERM_DESIGN.md 섹션 3):
+#   - 원인은 확정값이 아닌 **hypothesis**로 취급
+#   - 각 카테고리마다 3개 축: structural (장기·구조) / trigger (단기 트리거) / alternative (대체 가설)
+#   - 매칭은 (keywords + indicators_check) 조합. 둘 다 만족할 때 hypothesis_confidence 상승
+#   - probability_default: 운영 데이터 축적 전 초기값. 정기 튜닝 필요
+#   - information_completeness는 본 YAML 외부에서 계산 (5 서브 지표 별도)
+#
+# 구조:
+#   categories:
+#     <category_id>:
+#       structural: [hypothesis, ...]
+#       trigger: [hypothesis, ...]
+#       alternative_hypotheses: [hypothesis, ...]
+#
+# hypothesis 공통 필드:
+#   id: 내부 식별자 (snake_case)
+#   label: 한국어 설명
+#   keywords: 영·한 병기 매칭 키워드
+#   indicators_check: market_context 조건 (선택)
+#     - field: 지표명 (VIX, CL_F, TNX, KRW_USD 등)
+#       condition: 비교식 (문자열)
+#       weight: 이 조건이 만족될 때 hypothesis_confidence에 더할 가중치
+#   typical_direction: 이 가설이 맞을 때 예상되는 시장 방향
+#   probability_default: 기본 확률 (0.0~1.0, 운영 전 초기값)
+#   confidence_base: 기본 확신도 (운영 전 초기값, LLM이 재평가)
+#   disqualifying_indicators (선택): 이 조건 만족 시 가설 가능성 하락
+#
+# 편집 규칙:
+#   - 신규 카테고리/가설 추가는 YAML 직접 편집 (결정 Q4)
+#   - structural vs trigger vs alternative 구분 엄격히 유지
+#   - probability_default는 3개 축 합계가 대략 1.0 내외 유지 (엄격 X)
+
+version: 1
+last_updated: "2026-04-19"
+
+categories:
+  # ═══════════════════════════════════════════════════════════════
+  # 1. ENERGY_SUPPLY — 에너지 공급 이벤트의 원인 가설
+  # ═══════════════════════════════════════════════════════════════
+  energy_supply:
+    structural:
+      - id: opec_supply_policy
+        label: OPEC+ 감산 기조
+        keywords:
+          - "OPEC+"
+          - "OPEC 감산"
+          - "production cut"
+          - "sustained output"
+          - "output extension"
+          - "사우디 재정 균형"
+          - "감산 연장"
+          - "감산 정책"
+        indicators_check:
+          - {field: CL_F, condition: "> 85", weight: 0.3}
+          - {field: KRW_USD, condition: "> 1400", weight: 0.1}
+        typical_direction: bullish_oil
+        probability_default: 0.4
+        confidence_base: 0.6
+
+      - id: strategic_inventory_regime
+        label: 전략비축유 운영 체제
+        keywords:
+          - "SPR"
+          - "strategic reserve"
+          - "전략비축유"
+          - "비축유 방출 계획"
+          - "emergency stockpile"
+        indicators_check:
+          - {field: CL_F, condition: "< 75", weight: 0.2}
+        typical_direction: bearish_oil_short
+        probability_default: 0.15
+        confidence_base: 0.5
+
+      - id: energy_transition_structure
+        label: 에너지 전환기 수요 구조
+        keywords:
+          - "재생에너지"
+          - "탈탄소"
+          - "energy transition"
+          - "peak oil demand"
+          - "EV 수요"
+          - "수소 경제"
+        typical_direction: mixed_structural
+        probability_default: 0.1
+        confidence_base: 0.4
+
+      - id: geopolitical_premium
+        label: 지정학 리스크 프리미엄 (구조적)
+        keywords:
+          - "Middle East tensions"
+          - "중동 리스크"
+          - "sustained conflict"
+          - "long-standing dispute"
+        indicators_check:
+          - {field: VIX, condition: "> 20", weight: 0.2}
+        typical_direction: bullish_oil
+        probability_default: 0.2
+        confidence_base: 0.55
+
+    trigger:
+      - id: geopolitical_flareup
+        label: 지정학 긴장 급변
+        keywords:
+          - "strike"
+          - "Iran"
+          - "blockade"
+          - "sabotage"
+          - "Hormuz"
+          - "Houthi"
+          - "Red Sea attack"
+          - "호르무즈 봉쇄"
+          - "이란 해군"
+          - "후티"
+        indicators_check:
+          - {field: VIX, condition: "> 22", weight: 0.3}
+          - {field: CL_F, condition: "> 90", weight: 0.2}
+        typical_direction: bullish_oil
+        probability_default: 0.5
+        confidence_base: 0.75
+
+      - id: production_incident
+        label: 생산·수송 인프라 사고
+        keywords:
+          - "refinery fire"
+          - "pipeline rupture"
+          - "platform explosion"
+          - "정유시설 화재"
+          - "원유 유출"
+        indicators_check:
+          - {field: CL_F, condition: "> 85", weight: 0.2}
+        typical_direction: bullish_oil_short
+        probability_default: 0.15
+        confidence_base: 0.7
+
+      - id: natural_disaster
+        label: 자연재해 (허리케인·지진)
+        keywords:
+          - "hurricane"
+          - "earthquake"
+          - "storm shutdown"
+          - "정전·피해"
+          - "flooding refinery"
+        indicators_check:
+          - {field: CL_F, condition: "> 85", weight: 0.15}
+        typical_direction: bullish_oil_short
+        probability_default: 0.1
+        confidence_base: 0.65
+
+      - id: policy_announcement
+        label: 정책 발표 (관세·제재·방출)
+        keywords:
+          - "tariff"
+          - "sanction"
+          - "ban exports"
+          - "emergency release"
+          - "수출 금지"
+          - "긴급 방출"
+        typical_direction: depends_on_direction
+        probability_default: 0.15
+        confidence_base: 0.6
+
+    alternative_hypotheses:
+      - id: demand_collapse
+        label: 수요 붕괴형 (경기침체)
+        keywords:
+          - "recession"
+          - "PMI drop"
+          - "consumer weakness"
+          - "경기침체"
+          - "소비 둔화"
+          - "제조업 위축"
+        indicators_check:
+          - {field: VIX, condition: "> 25", weight: 0.2}
+          - {field: TNX, condition: "< 3.5", weight: 0.1}
+        typical_direction: bearish_oil_and_equities
+        probability_default: 0.15
+        confidence_base: 0.5
+        disqualifying_indicators:
+          - {field: VIX, condition: "< 18"}       # 정상 범위면 경기침체 가설 약함
+          - {field: CL_F, condition: "> 95"}      # 유가 높은데 수요 붕괴는 부정합
+
+      - id: supply_surge
+        label: 공급 증가형 (OPEC 결렬·러시아 공급)
+        keywords:
+          - "OPEC+ break"
+          - "output increase"
+          - "Russia barrel"
+          - "유가 공급 과잉"
+          - "증산 합의"
+        indicators_check:
+          - {field: CL_F, condition: "< 85", weight: 0.2}
+        typical_direction: bearish_oil_bullish_consumer
+        probability_default: 0.1
+        confidence_base: 0.5
+
+      - id: speculative_positioning
+        label: 투기적 포지션 청산
+        keywords:
+          - "hedge fund unwind"
+          - "long liquidation"
+          - "short squeeze oil"
+          - "포지션 청산"
+          - "숏스퀴즈"
+        typical_direction: short_term_volatility
+        probability_default: 0.05
+        confidence_base: 0.4
+
+  # ═══════════════════════════════════════════════════════════════
+  # 2. GEOPOLITICAL — 지정학 이벤트의 원인 가설
+  # ═══════════════════════════════════════════════════════════════
+  geopolitical:
+    structural:
+      - id: hegemonic_rivalry
+        label: 패권 경쟁 (미·중 vs 다극화)
+        keywords:
+          - "US-China"
+          - "strategic competition"
+          - "multipolar"
+          - "decoupling"
+          - "미중 갈등"
+          - "디커플링"
+          - "전략 경쟁"
+        typical_direction: bearish_global_risk_assets
+        probability_default: 0.3
+        confidence_base: 0.65
+
+      - id: regional_proxy_conflict
+        label: 지역 대리전 구조
+        keywords:
+          - "proxy"
+          - "Yemen"
+          - "Hezbollah"
+          - "IRGC"
+          - "Wagner"
+          - "대리 세력"
+          - "이슬람 저항"
+        indicators_check:
+          - {field: VIX, condition: "> 20", weight: 0.15}
+        typical_direction: bullish_defense_oil
+        probability_default: 0.25
+        confidence_base: 0.6
+
+      - id: alliance_restructuring
+        label: 동맹 재편
+        keywords:
+          - "NATO expansion"
+          - "AUKUS"
+          - "Quad"
+          - "나토 확장"
+          - "한미일 공조"
+        typical_direction: mixed_defense_positive
+        probability_default: 0.1
+        confidence_base: 0.5
+
+      - id: resource_nationalism
+        label: 자원 민족주의 (원자재 통제)
+        keywords:
+          - "rare earth"
+          - "lithium nationalization"
+          - "export restriction"
+          - "희토류 통제"
+          - "자원 무기화"
+        typical_direction: bullish_commodity_bearish_tech
+        probability_default: 0.15
+        confidence_base: 0.55
+
+    trigger:
+      - id: overt_military_action
+        label: 명시적 군사행동
+        keywords:
+          - "strike"
+          - "missile attack"
+          - "invasion"
+          - "airstrike"
+          - "지상 공격"
+          - "미사일 발사"
+          - "공습"
+        indicators_check:
+          - {field: VIX, condition: "> 25", weight: 0.3}
+          - {field: CL_F, condition: "> 90", weight: 0.15}
+        typical_direction: bullish_oil_defense_gold
+        probability_default: 0.35
+        confidence_base: 0.8
+
+      - id: diplomatic_breakdown
+        label: 외교 단절·최후통첩
+        keywords:
+          - "expulsion"
+          - "embassy closed"
+          - "ultimatum"
+          - "대사관 폐쇄"
+          - "외교관 추방"
+          - "최후통첩"
+        typical_direction: bullish_risk_hedges
+        probability_default: 0.2
+        confidence_base: 0.7
+
+      - id: nuclear_threat
+        label: 핵 위협·실험
+        keywords:
+          - "nuclear test"
+          - "nuclear strike"
+          - "핵 위협"
+          - "핵 실험"
+          - "ICBM"
+        indicators_check:
+          - {field: VIX, condition: "> 30", weight: 0.4}
+        typical_direction: extreme_bearish_risk_bullish_safe
+        probability_default: 0.05
+        confidence_base: 0.85
+
+      - id: economic_sanction_tightening
+        label: 제재 강화
+        keywords:
+          - "new sanctions"
+          - "asset freeze"
+          - "export control"
+          - "제재 확대"
+          - "자산 동결"
+        typical_direction: mixed_currency_sector_specific
+        probability_default: 0.2
+        confidence_base: 0.65
+
+    alternative_hypotheses:
+      - id: domestic_political_theater
+        label: 국내 정치용 강경 수사
+        keywords:
+          - "election rally"
+          - "approval rating"
+          - "domestic politics"
+          - "국내 정치"
+          - "지지율 반등"
+        typical_direction: short_term_noise
+        probability_default: 0.15
+        confidence_base: 0.4
+        disqualifying_indicators:
+          - {field: VIX, condition: "> 30"}       # 실제 긴급 상황이면 국내 정치용 해석 약함
+
+      - id: negotiation_leverage
+        label: 협상 레버리지 (deal-making bluff)
+        keywords:
+          - "negotiating tactics"
+          - "pressure play"
+          - "leverage"
+          - "협상용 압박"
+          - "전술적 경고"
+        typical_direction: reverses_quickly
+        probability_default: 0.15
+        confidence_base: 0.45
+
+      - id: misinformation_or_overreaction
+        label: 오보·과잉 반응
+        keywords:
+          - "unconfirmed"
+          - "denied"
+          - "retracted"
+          - "오보"
+          - "철회"
+          - "확인 불가"
+        typical_direction: initial_spike_reversal
+        probability_default: 0.05
+        confidence_base: 0.35
+        disqualifying_indicators:
+          - {field: VIX, condition: "> 25"}       # 시장이 이미 심각하게 반응했으면 오보 가설 낮음
+
+  # ═══════════════════════════════════════════════════════════════
+  # 3. MONETARY_POLICY — 통화정책 이벤트의 원인 가설
+  # ═══════════════════════════════════════════════════════════════
+  monetary_policy:
+    structural:
+      - id: inflation_regime
+        label: 인플레이션 체제 (지속적 고물가)
+        keywords:
+          - "persistent inflation"
+          - "sticky CPI"
+          - "wage growth"
+          - "구조적 인플레"
+          - "임금 상승"
+          - "서비스 물가"
+        indicators_check:
+          - {field: TNX, condition: "> 4.5", weight: 0.25}
+        typical_direction: bearish_growth_bullish_value
+        probability_default: 0.3
+        confidence_base: 0.65
+
+      - id: debt_sustainability_concern
+        label: 국가 부채 지속가능성 우려
+        keywords:
+          - "fiscal deficit"
+          - "debt-to-GDP"
+          - "long-end yields"
+          - "국채 수급"
+          - "재정 적자"
+          - "장기금리 급등"
+        indicators_check:
+          - {field: TNX, condition: "> 5.0", weight: 0.3}
+        typical_direction: bearish_long_bonds_dollar_mixed
+        probability_default: 0.15
+        confidence_base: 0.55
+
+      - id: fed_policy_regime_shift
+        label: Fed 정책 체제 전환 (데이터 의존 → 선제적)
+        keywords:
+          - "data dependent"
+          - "preemptive"
+          - "forward guidance shift"
+          - "정책 체제 변경"
+          - "선제 대응"
+        typical_direction: rate_volatility_up
+        probability_default: 0.2
+        confidence_base: 0.55
+
+      - id: global_rate_divergence
+        label: 글로벌 금리 디커플링
+        keywords:
+          - "Fed BOJ divergence"
+          - "ECB cut first"
+          - "금리 격차"
+          - "통화정책 분기"
+        indicators_check:
+          - {field: KRW_USD, condition: "> 1400", weight: 0.2}
+        typical_direction: dollar_strength_em_weakness
+        probability_default: 0.15
+        confidence_base: 0.55
+
+    trigger:
+      - id: surprise_data_print
+        label: 지표 서프라이즈 (CPI·고용)
+        keywords:
+          - "CPI surprise"
+          - "nonfarm"
+          - "hot inflation"
+          - "jobs shock"
+          - "CPI 예상 상회"
+          - "고용 서프라이즈"
+        indicators_check:
+          - {field: TNX, condition: ">= 4.0", weight: 0.2}
+        typical_direction: rate_expectation_shift
+        probability_default: 0.35
+        confidence_base: 0.75
+
+      - id: fed_speak_shift
+        label: Fed 인사 발언 변화
+        keywords:
+          - "Powell"
+          - "dovish"
+          - "hawkish"
+          - "pivot"
+          - "연준 발언"
+          - "비둘기파"
+          - "매파 전환"
+        typical_direction: short_term_rate_volatility
+        probability_default: 0.25
+        confidence_base: 0.65
+
+      - id: fx_intervention
+        label: 외환 개입
+        keywords:
+          - "currency intervention"
+          - "BOJ intervention"
+          - "외환 개입"
+          - "스무딩 오퍼레이션"
+        indicators_check:
+          - {field: KRW_USD, condition: "> 1450", weight: 0.25}
+        typical_direction: currency_stabilization_short_term
+        probability_default: 0.1
+        confidence_base: 0.7
+
+      - id: credit_event_policy_response
+        label: 신용 이벤트에 대한 정책 대응
+        keywords:
+          - "liquidity facility"
+          - "emergency lending"
+          - "유동성 지원"
+          - "긴급 대출"
+          - "BTFP"
+        indicators_check:
+          - {field: VIX, condition: "> 25", weight: 0.25}
+        typical_direction: bullish_risk_short_term
+        probability_default: 0.1
+        confidence_base: 0.7
+
+    alternative_hypotheses:
+      - id: political_pressure_on_fed
+        label: Fed에 대한 정치적 압박
+        keywords:
+          - "Trump Fed"
+          - "fire Powell"
+          - "독립성 훼손"
+          - "정치 압박"
+        typical_direction: dollar_weakness_gold_up
+        probability_default: 0.1
+        confidence_base: 0.5
+
+      - id: market_overreaction_to_rhetoric
+        label: 시장의 수사 과민반응
+        keywords:
+          - "misinterpreted"
+          - "market overreaction"
+          - "과민반응"
+          - "문맥 왜곡"
+        typical_direction: reverses_within_session
+        probability_default: 0.1
+        confidence_base: 0.4
+        disqualifying_indicators:
+          - {field: TNX, condition: "> 5.0"}      # 금리 구조적 상승 중이면 수사 해석 약함
+
+      - id: technical_positioning_unwind
+        label: 기술적 포지션 청산
+        keywords:
+          - "CTA unwind"
+          - "systematic selling"
+          - "bond vigilantes"
+          - "기술적 매도"
+        typical_direction: short_term_noise
+        probability_default: 0.1
+        confidence_base: 0.45
+
+# ═══════════════════════════════════════════════════════════════
+# 확장 예정 (Phase 8+)
+# ═══════════════════════════════════════════════════════════════
+# - supply_chain      (chip_shortage / port_closure / export_ban 원인)
+# - fiscal_policy     (tariff / subsidy / default 원인)
+# - earnings_shock    (guidance_cut 등 원인)
+# - liquidity_event   (bank_run / credit_crunch 원인)
