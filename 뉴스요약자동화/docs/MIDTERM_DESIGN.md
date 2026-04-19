@@ -36,12 +36,25 @@ Event
   ↓
 [Event Type Classifier] — 무엇이 일어났는가
   ↓
-[Cause / Driver Analyzer] — 왜 일어났는가 (구조적 vs 트리거, 대체 원인 시나리오)  ← 신규
+[Cause / Driver Analyzer] — 원인 가설 생성 (확정값 아님, hypothesis로 취급)  ← 신규
+  ├─ 구조적 요인 가설(structural) / 단기 트리거 가설(trigger)
+  ├─ 대체 가설(alternative) 2~3개 + 각 확률
+  ├─ 유력 가설(leading hypothesis) 선정
+  ├─ hypothesis_confidence: 가설의 상대적 확신도 (참고 지표)
+  └─ information_completeness: 의사결정에 필요한 정보의 충분성 (주 기준) ⭐
   ↓
-[Impact Analyzer] — 원인별 분기 영향
+[Impact Analyzer] — 가설별 분기 영향
   ↓
-Signal (확률 가중 or 보수적 최대 손실 기반)
+Signal — **information_completeness 기반**으로 행동 결정
+  ├─ 정보 충분(≥0.7): 유력 가설 기반 포지션
+  ├─ 정보 중간(0.4~0.7): 양측 헷지 / 축소
+  └─ 정보 부족(<0.4): 포지션 유보
 ```
+
+**설계 원칙:**
+- 원인은 언제나 **가설(hypothesis)** 이며, 확정값으로 쓰지 않는다.
+- Signal 판단은 **가설이 맞을 확률(confidence)이 아니라 "이 판단을 내릴 정보가 충분한가(information_completeness)"**를 기준으로 한다.
+- 높은 confidence라도 정보 불완전 상태에서는 보수적으로 대응한다 (불완전 정보 + 확신 = 오판의 전형적 패턴).
 
 ---
 
@@ -153,11 +166,16 @@ JSON으로 답하라. 매칭 불가면 category="none".
 ## 3. **⭐ Cause / Driver Analyzer — 신규 서브스펙**
 
 ### 3-1. 목적
-이벤트 분류(=무엇) 직후 **원인 분해(=왜)**를 수행하여:
-1. 구조적 요인과 단기 트리거를 구분
-2. 대체 원인 시나리오를 나열 (단일 해석 오류 방지)
-3. 원인별 영향 분기를 다음 단계(Impact Analyzer)에 전달
-4. 불확실성을 명시적으로 표기 (confidence)
+이벤트 분류(=무엇) 직후 **원인 가설 생성(=왜일 가능성)**을 수행하여:
+1. 구조적 요인 가설과 단기 트리거 가설을 구분 (**가설이지 결론이 아님**)
+2. 대체 가설을 나열 (단일 해석 오류 방지)
+3. 가설별 영향 분기를 다음 단계(Impact Analyzer)에 전달
+4. 두 종류 불확실성을 분리 표기:
+   - **hypothesis_confidence**: 유력 가설이 맞을 상대적 확률 (참고 지표)
+   - **information_completeness**: 의사결정에 필요한 정보 충분성 ⭐ **Signal 판단의 주 기준**
+
+**설계 철학:** 원인은 알 수 없다. 알 수 있는 것은 "얼마나 아는가"뿐이다.
+따라서 hypothesis_confidence가 높아도 information_completeness가 낮으면 행동 보류한다.
 
 ### 3-2. 입출력 명세
 
@@ -177,70 +195,105 @@ JSON으로 답하라. 매칭 불가면 category="none".
 }
 ```
 
-**출력:**
+**출력:** (모든 원인은 hypothesis — 확정값 아님)
 ```python
 {
-    "structural_drivers": [               # 장기·구조 요인 (0~N개)
+    "structural_hypotheses": [             # 장기·구조 요인 가설 (0~N개)
         {
             "label": "OPEC+ 감산 기조 장기화",
+            "hypothesis_type": "structural",
             "evidence": ["2025-Q4 감산 연장", "사우디 재정 균형 유가 $85"],
             "direction_bias": "bullish_oil",
-            "confidence": 0.7
+            "probability": 0.7,            # 이 가설이 맞을 상대적 확률
+            "hypothesis_confidence": 0.7   # 가설 자체에 대한 확신도
         }
     ],
-    "short_term_triggers": [              # 단기 트리거 (0~N개)
+    "short_term_trigger_hypotheses": [     # 단기 트리거 가설 (0~N개)
         {
             "label": "Iran-Israel 긴장 고조",
+            "hypothesis_type": "trigger",
             "evidence": ["04/18 Hormuz 봉쇄 통보"],
             "direction_bias": "bullish_oil",
-            "confidence": 0.85
+            "probability": 0.8,
+            "hypothesis_confidence": 0.85
         }
     ],
-    "alternative_causes": [               # 대체 원인 시나리오
+    "alternative_hypotheses": [            # 대체 가설
         {
             "label": "수요 붕괴형 하락 (경기침체)",
+            "hypothesis_type": "alternative",
             "probability": 0.15,
             "direction_bias": "bearish_risk_assets",
             "disqualifying_evidence": ["VIX 정상 범위", "PMI 견조"]
         },
         {
             "label": "공급 증가형 하락 (OPEC 결렬)",
+            "hypothesis_type": "alternative",
             "probability": 0.05,
             "direction_bias": "neutral_oil_bullish_consumer",
             "disqualifying_evidence": ["감산 기조 유지 중"]
         }
     ],
-    "dominant_cause": {                   # 가장 가능성 높은 원인
+    "leading_hypothesis": {                # 유력 가설 (확정 아님, 가장 가능성 높은 것)
         "label": "지정학 긴장 고조",
-        "cause_type": "short_term_trigger",
+        "hypothesis_type": "trigger",
         "probability": 0.8,
-        "confidence": 0.75
+        "hypothesis_confidence": 0.75
     },
-    "cause_confidence": 0.75,             # 전체 원인 분석 확신도
-    "information_completeness": 0.6       # 정보 충분성 (불완전=낮음)
+    "hypothesis_confidence": 0.75,         # 유력 가설의 상대적 확신도 (참고 지표)
+    "information_completeness": 0.6,       # ⭐ Signal 판단의 주 기준
+    "completeness_breakdown": {            # information_completeness 산출 근거
+        "source_diversity": 0.5,           # 서로 다른 출처 수 (1차 발행처·해설·시장 반응)
+        "market_context_coverage": 0.7,    # 관련 시장지표 최신성 (VIX, 유가, 환율 등)
+        "corroborating_signals": 0.6,      # 교차 확증 시그널 (다른 뉴스·지표 일치)
+        "time_since_event_hours": 4,       # 발생 후 경과시간 (짧을수록 정보 불충분)
+        "contradicting_signals": 0.2       # 가설과 상충하는 시그널 (높을수록 정보 혼란)
+    }
 }
 ```
+
+**핵심 변경점:**
+- `dominant_cause` → `leading_hypothesis` (확정적 함의 제거)
+- `cause_candidates` → `cause_hypotheses` (모든 원인은 가설)
+- `cause_confidence` → `hypothesis_confidence` (참고 지표로 강등)
+- **`information_completeness` + `completeness_breakdown` 신규** (Signal 주 기준)
 
 ### 3-3. 작동 흐름
 
 ```
 [Event Type Classifier 결과 수신]
      ↓
-[Tier 1: Cause Rule Engine]
- ├─ YAML 기반 원인 후보 사전 로딩
- │    category별 structural_drivers 템플릿
- │    category별 short_term_triggers 템플릿
- ├─ 본문·시장 context 대조
- └─ 매칭된 원인 후보 + evidence 수집
+[Tier 1: Cause Hypothesis Engine (규칙)]
+ ├─ YAML 기반 원인 가설 사전 로딩
+ │    category별 structural_hypotheses 템플릿
+ │    category별 trigger_hypotheses 템플릿
+ │    category별 alternative_hypotheses 템플릿
+ ├─ 본문·시장 context 대조해 가설별 evidence 수집
+ └─ 가설별 probability 초안 부여 (템플릿 기본값)
      ↓
-[Tier 2: Cause LLM (선택적)]
+[Tier 2: Cause Hypothesis LLM (선택적)]
  ├─ Tier 1 결과 + NewsItem + market context를 prompt에 주입
- ├─ LLM에게 "구조 vs 트리거 분해, 대체 시나리오 나열, 확률 부여" 지시
+ ├─ LLM 지시:
+ │   1) 구조·트리거·대체 가설 나열 (확정 X, 가설 O)
+ │   2) 가설별 probability 정제
+ │   3) information_completeness 산출 (5개 서브 지표로 분해)
  ├─ 응답 JSON 파싱 → output schema에 맞춤
- └─ cause_cache.db 에 영속화
+ └─ cause_cache.db 영속화
      ↓
-[Cause 결과를 NewsItem에 첨부]
- item.cause_analysis = CauseAnalysis(...)
+[information_completeness 계산]
+ completeness_breakdown 5개 지표를 가중 평균
+ - source_diversity (0.25)
+ - market_context_coverage (0.20)
+ - corroborating_signals (0.20)
+ - time_freshness_factor (0.15)
+ - low_contradiction_factor (0.20)  ← contradicting_signals의 역수
+     ↓
+[CauseAnalysis 결과를 NewsItem에 첨부]
+ item.cause_analysis = CauseAnalysis(
+     ...,
+     leading_hypothesis=...,
+     information_completeness=...  # Signal 판단의 주 기준
+ )
      ↓
 [다음 단계 Impact Analyzer로 전달]
 ```
@@ -320,17 +373,33 @@ categories:
 
 ```
 [시스템 — 캐시됨]
-너는 시장 뉴스의 원인을 분해하는 분석가다.
-주어진 이벤트에 대해:
-1. 구조적 요인(structural driver): 장기·제도적 배경. 현재 이벤트가 없었어도 존재할 요인.
-2. 단기 트리거(trigger): 이번 이벤트를 직접 촉발한 단일·특수 사건.
-3. 대체 원인(alternative causes): 같은 이벤트를 다르게 해석할 시나리오 2~3개. 각 확률 부여.
-4. 지배적 원인(dominant cause): 가장 가능성 높은 원인 하나.
+너는 시장 뉴스의 원인을 "가설"로 제시하는 분석가다.
+원인은 절대 확정하지 말고, 항상 여러 가설의 집합으로 출력하라.
 
-반드시 JSON으로만 응답. 근거 없는 원인은 confidence < 0.4로 표기.
-정보 부족하면 "information_completeness"를 0.5 이하로.
+주어진 이벤트에 대해 다음을 JSON으로 응답:
 
-category별 후보 원인 사전:
+1. structural_hypotheses: 장기·제도적 배경 가설. 현재 이벤트가 없었어도 존재할 요인.
+2. short_term_trigger_hypotheses: 이번 이벤트를 직접 촉발했을 가능성 있는 단일 사건.
+3. alternative_hypotheses: 같은 이벤트를 다르게 해석할 수 있는 가설 2~3개.
+4. leading_hypothesis: 가장 가능성 높은 가설 하나 (확정이 아닌 "가장 유력").
+
+각 가설에는 probability(상대 확률)와 hypothesis_confidence(가설 자체의 확신도)를 부여.
+
+★ 중요 — information_completeness 별도 산출:
+  "이 판단을 내리기에 정보가 충분한가"를 0.0~1.0으로 평가.
+  다음 5개 서브 지표로 분해하여 completeness_breakdown에 담는다:
+  - source_diversity: 서로 다른 출처 수 (1차·해설·시장 반응 독립적 확인)
+  - market_context_coverage: 관련 시장지표 최신성
+  - corroborating_signals: 가설을 뒷받침하는 교차 확증 시그널
+  - time_since_event_hours: 발생 후 경과시간 (짧을수록 정보 불충분)
+  - contradicting_signals: 가설과 상충하는 시그널 (높을수록 정보 혼란)
+
+주의:
+- 정보 부족(속보 직후, 출처 1개, 시장 미반응)이면 information_completeness를 0.4 이하로.
+- hypothesis_confidence가 높더라도 information_completeness가 낮을 수 있다 (별개 지표).
+- 근거 없는 가설은 hypothesis_confidence < 0.4로 표기.
+
+category별 후보 가설 사전:
 {cause_taxonomy YAML 삽입}
 
 [사용자 — 매번 갱신]
@@ -339,6 +408,8 @@ event_subtype: production_halt
 event_severity: 3
 news_title: ...
 news_snippet: ...
+publish_time: 2026-04-19T12:30:00  # time_since_event_hours 계산용
+sources_seen_so_far: ["Reuters", "연합뉴스"]  # source_diversity 계산용
 market_context:
   VIX: 22.5
   KRW_USD: 1480
@@ -348,94 +419,164 @@ market_context:
 
 ### 3-6. Impact Analyzer 단계에서의 활용
 
-Cause Analyzer 결과가 주어지면 Impact Analyzer는 **원인별 영향을 분기**:
+Cause Analyzer 결과가 주어지면 Impact Analyzer는 **가설별 영향을 분기**하되, 절대 하나로 환원하지 않는다:
 
 ```python
 def analyze_impact(item: NewsItem) -> ImpactAssessment:
     cause = item.cause_analysis
+    leading = cause.leading_hypothesis  # "가장 유력"이지 "확정" 아님
 
-    if cause.dominant_cause.cause_type == "short_term_trigger":
-        # 단기 트리거 → 단기 변동성↑, 되돌림 가능성 고려
-        primary_impact = _trigger_impact_template(cause.dominant_cause, item)
+    if leading.hypothesis_type == "trigger":
+        # 단기 트리거 가설 → 단기 변동성↑, 되돌림 가능성 고려
+        leading_impact = _trigger_impact_template(leading, item)
+    elif leading.hypothesis_type == "structural":
+        # 구조적 요인 가설 → 지속성↑, 방향 고정
+        leading_impact = _structural_impact_template(leading, item)
     else:
-        # 구조적 요인 → 지속성↑, 방향 고정
-        primary_impact = _structural_impact_template(cause.dominant_cause, item)
+        leading_impact = _alternative_impact_template(leading, item)
 
-    # 대체 시나리오도 같이 계산 (확률 가중)
+    # 대체 가설도 같이 계산 (확률 가중 시나리오)
     alternative_impacts = [
-        _impact_from_cause(alt, item) for alt in cause.alternative_causes
+        _impact_from_hypothesis(alt, item)
+        for alt in cause.alternative_hypotheses
     ]
 
     return ImpactAssessment(
-        primary=primary_impact,
-        alternatives=alternative_impacts,
-        confidence=cause.cause_confidence,
-        information_completeness=cause.information_completeness,
+        leading_scenario=leading_impact,       # 유력 가설 기반 (확정 아님)
+        alternative_scenarios=alternative_impacts,
+        hypothesis_confidence=cause.hypothesis_confidence,  # 참고용
+        information_completeness=cause.information_completeness,  # ⭐ Signal 주 기준
+        completeness_breakdown=cause.completeness_breakdown,
     )
 ```
 
-### 3-7. Signal Layer 연동 — 확률 가중 행동 제안
+**주의:** `leading_scenario`는 `primary`라는 이름 대신 `leading`으로 표기해 확정 아님을 명시.
 
-```
-if cause.confidence >= 0.7:
-    # 확신 있음 → 지배 시나리오 기반 행동 제안
-    action = primary_impact.action
-elif cause.confidence >= 0.4:
-    # 중간 확신 → 보수적 액션 (양측 리스크 고려)
-    action = "관망 + 양측 헷지"
-else:
-    # 낮은 확신 (정보 불충분)
-    action = "신규 포지션 보류 — 원인 확정 전까지"
+### 3-7. Signal Layer — **information_completeness 기반 행동 결정** ⭐
+
+**설계 전환:** 이전 안은 `hypothesis_confidence`로 분기했으나, 확신은 높지만 정보가 불충분한 상태가 가장 위험한 오판 유형임을 반영해 **information_completeness를 주 기준으로 전환**.
+
+```python
+def decide_signal(item: NewsItem) -> Signal:
+    cause = item.cause_analysis
+    impact = item.impact_assessment
+    completeness = cause.information_completeness   # ⭐ 주 기준
+    conf = cause.hypothesis_confidence              # 참고 지표
+
+    if completeness >= 0.7:
+        # 정보 충분 → 유력 가설 기반 포지션 가능
+        # (단, conf가 낮으면 규모 축소)
+        action = _leading_action(impact.leading_scenario)
+        position_size = 1.0 if conf >= 0.7 else 0.5
+        note = "정보 충분 + 유력 가설 기반"
+
+    elif completeness >= 0.4:
+        # 정보 중간 → 양측 헷지 / 축소 포지션
+        action = "양측 시나리오 헷지 + 포지션 축소(50%)"
+        position_size = 0.5
+        note = "정보 중간 — 단일 가설에 베팅 금지"
+
+    else:
+        # 정보 부족 → 신규 포지션 유보
+        # confidence가 높더라도 무조건 보류
+        action = "신규 포지션 보류 — 추가 정보 확인 후 재평가"
+        position_size = 0.0
+        note = f"정보 부족 (completeness={completeness:.2f}). " \
+               f"가설 확신도({conf:.2f})와 무관하게 보류"
+
+    return Signal(
+        action=action,
+        position_size=position_size,
+        note=note,
+        # 참고 정보로 두 지표 모두 기록
+        information_completeness=completeness,
+        hypothesis_confidence=conf,
+        leading_hypothesis_label=cause.leading_hypothesis.label,
+    )
 ```
 
-이메일·Slack 템플릿에는 **Dominant Cause + 대체 시나리오 확률**을 명시:
+**왜 confidence가 아니라 completeness인가:**
+
+| 상황 | hypothesis_confidence | information_completeness | 적절한 행동 |
+|------|----------------------|--------------------------|------------|
+| 속보 직후, 출처 1개, 매우 그럴듯한 가설 | **0.85 (높음)** | 0.3 (낮음) | 🚫 **보류** (과거 보이스피싱 헤드라인에 시장이 오판한 유형) |
+| 반복 확인된 사건, 가설 애매 | 0.5 (중간) | 0.8 (높음) | ⚖️ 양측 헷지 |
+| 출처 다양 + 시장 반응 일치 + 가설 명확 | 0.8 | 0.85 | ✅ 유력 가설 기반 포지션 |
+| 이견 많고 출처 적음 | 0.4 | 0.3 | 🚫 보류 |
+
+**이메일/Slack 템플릿 표기 (확정 문구 제거):**
 ```
-📌 추정 원인: 지정학 긴장 고조 (단기 트리거, 확률 80%, 확신 75%)
-⚠️ 대체 시나리오: 수요 붕괴 (15%) · 공급 증가 (5%)
-💡 행동: 확률 가중 BULL 포지션, 단 VIX 재급등 시 축소
+📌 유력 가설 (확정 아님): 지정학 긴장 고조 (단기 트리거 가설, 확률 80%)
+⚠️ 대체 가설: 수요 붕괴 (15%) · 공급 증가 (5%)
+📊 정보 충분성: 60% (출처 2개 · 시장 반응 일부 확인 · 발생 4시간 경과)
+   ├ source_diversity: 0.5
+   ├ market_context_coverage: 0.7
+   ├ corroborating_signals: 0.6
+   ├ freshness: 0.55
+   └ low_contradiction: 0.6
+
+💡 행동 (정보 충분성 기반):
+   정보 중간 구간 → 양측 헷지 + 포지션 50% 축소
+   (가설 확신도 75%와 무관하게 정보 충분성이 기준)
 ```
 
 ### 3-8. 데이터 모델 확장
 
-`models/news_item.py`에 추가:
+`models/news_item.py`에 추가 (모든 필드가 "가설" 표기 일관):
 ```python
 @dataclass
-class CauseCandidate:
+class CauseHypothesis:
     label: str
-    cause_type: str          # "structural" | "trigger" | "alternative"
-    evidence: list[str]
-    direction_bias: str
-    probability: float = 0.0
-    confidence: float = 0.0
+    hypothesis_type: str                  # "structural" | "trigger" | "alternative"
+    evidence: list[str] = field(default_factory=list)
+    direction_bias: str = ""
+    probability: float = 0.0              # 가설의 상대적 확률
+    hypothesis_confidence: float = 0.0    # 가설 자체 확신도 (참고)
+    disqualifying_evidence: list[str] = field(default_factory=list)
+
+@dataclass
+class CompletenessBreakdown:
+    source_diversity: float = 0.0          # 출처 다양성
+    market_context_coverage: float = 0.0   # 시장지표 커버리지
+    corroborating_signals: float = 0.0     # 교차 확증 시그널
+    time_since_event_hours: float = 0.0    # 발생 후 경과시간
+    contradicting_signals: float = 0.0     # 상충 시그널
 
 @dataclass
 class CauseAnalysis:
-    structural_drivers: list[CauseCandidate]
-    short_term_triggers: list[CauseCandidate]
-    alternative_causes: list[CauseCandidate]
-    dominant_cause: Optional[CauseCandidate]
-    cause_confidence: float
-    information_completeness: float
+    structural_hypotheses: list[CauseHypothesis] = field(default_factory=list)
+    short_term_trigger_hypotheses: list[CauseHypothesis] = field(default_factory=list)
+    alternative_hypotheses: list[CauseHypothesis] = field(default_factory=list)
+    leading_hypothesis: Optional[CauseHypothesis] = None   # 유력 가설 (확정 X)
+    hypothesis_confidence: float = 0.0                     # 참고 지표
+    information_completeness: float = 0.0                  # ⭐ Signal 주 기준
+    completeness_breakdown: Optional[CompletenessBreakdown] = None
 
 # NewsItem에 필드 추가
 cause_analysis: Optional[CauseAnalysis] = None
 ```
 
-`utils/db.py` news_items 테이블 ALTER:
-- `cause_dominant TEXT`
-- `cause_type TEXT`            # structural / trigger
-- `cause_confidence REAL`
-- `cause_alternatives_json TEXT`
-- `information_completeness REAL`
+`utils/db.py` news_items 테이블 ALTER (용어·의미 일치):
+- `leading_hypothesis_label TEXT`          # 유력 가설 라벨 (확정 아님)
+- `leading_hypothesis_type TEXT`           # structural / trigger / alternative
+- `hypothesis_confidence REAL`             # 참고 지표
+- `information_completeness REAL`          # ⭐ Signal 판단 기준
+- `completeness_breakdown_json TEXT`       # 5개 서브 지표 원본
+- `alternative_hypotheses_json TEXT`       # 대체 가설 목록 + 확률
+- `structural_hypotheses_json TEXT`        # 구조 가설 목록
+
+**이유:** 컬럼명에서 `dominant_cause`·`cause_confidence`를 배제해, DB 쿼리 작성 시에도 "확정 아닌 가설"·"information completeness가 주 기준"이 자연히 전달되도록 한다.
 
 ### 3-9. 비용 및 리스크 관리
 
 | 항목 | 값 / 대응 |
 |------|----------|
 | Tier 2 추가 토큰 (분류 대비 ~2~3배) | 월 +$1~2 예상 (Gemini Flash 기준) |
-| 정보 불완전 시 오판 위험 | `information_completeness < 0.5`면 알림 보류 또는 "원인 미확정" 라벨 |
-| UX 피로 (양측 시나리오 표시) | Dominant만 기본 노출, 대체는 접혀 있음 |
-| Cache 무효화 | Cause 판정은 새 맥락(market_context) 변화 시 재계산. 기본 24h TTL |
+| 정보 불완전 시 오판 위험 | **Signal Layer가 `information_completeness < 0.4`일 때 포지션 자동 보류**. 알림은 "가설·정보 부족" 라벨로 발송 |
+| "확신은 높은데 정보 부족" 역설 | completeness를 주 기준으로 둔 이유. 이 케이스에서 Signal 보류 처리가 자동으로 됨 |
+| UX 피로 (양측 시나리오 표시) | Leading hypothesis만 기본 노출, 대체 가설 및 completeness_breakdown은 접힘 |
+| 원인 오인 방지 | "추정 원인" 대신 "유력 가설(leading hypothesis)"로 UI 표기. 확정 함의 주는 단어 전면 배제 |
+| Cache 무효화 | Cause 판정은 새 맥락(market_context) 변화 + 새 출처 유입 시 재계산. 기본 24h TTL |
 
 ### 3-10. 구현 단계 (Cause Analyzer 내부)
 
@@ -495,7 +636,9 @@ Tier 2 LLM 재분류 (+Cause Analyzer 적용)
   - `blockade` → 해상로 봉쇄 템플릿 (유가·물류·항공 영향)
   - `rate_shock` → 금리 쇼크 템플릿 (성장주·리츠·채권)
   - `earnings_shock` → 실적 쇼크 템플릿 (개별 종목 + 섹터 파급)
-- **Cause 결과 포함**: Dominant Cause + 대체 시나리오 명시
+- **Cause 결과 포함**: Leading Hypothesis + 대체 가설 + **information_completeness 섹션 별도**
+- 확정 어휘 배제 ("추정 원인" → "유력 가설", "dominant" 단어 불사용)
+- Signal 섹션은 information_completeness 구간별로 행동 자동 라벨링
 
 ### 6-2. 신규 이메일 템플릿 (카테고리별)
 ```
@@ -563,21 +706,29 @@ Phase 11 (+6~7주):
 | 지표 | 단기안(현재) | 중기안 목표 |
 |------|------|------|
 | 이벤트 분류율 (geo_level 설정된 비율) | ~30% | ≥70% |
-| Cause confidence 평균 | N/A | ≥0.6 |
-| 동일 이벤트 대체 시나리오 노출률 | 0% | ≥40% (confidence<0.7일 때) |
+| **information_completeness 평균** (주요 기준) | N/A | ≥0.55 |
+| **completeness<0.4 시 Signal 보류율** | N/A | 100% (자동 보류, 예외 없음) |
+| hypothesis_confidence 평균 (참고 지표) | N/A | ≥0.5 |
+| 동일 이벤트 대체 가설 노출률 | 0% | ≥60% (completeness<0.7일 때 필수 표시) |
+| "확신 높은데 정보 부족" 케이스 오판 방지율 | 측정 불가 | ≥90% (completeness 기반 보류로 자동 해결) |
 | missed_events 주간 건수 | 측정 개시 | 단기안 대비 -50% |
-| 사후 원인 오판 비율 (주간 리뷰) | 측정 불가 | ≤15% |
-| 이메일 1건당 토큰 비용 | ~500 | ~1200 (Cause 포함) |
+| 사후 가설 적중률 (주간 리뷰) | 측정 불가 | ≥60% (leading hypothesis가 실제 주요 요인과 일치) |
+| 이메일 1건당 토큰 비용 | ~500 | ~1400 (Cause + completeness_breakdown 포함) |
 
 ---
 
 ## 10. 공개 질문 (구현 전 결정 필요)
 
 1. **Cause Analyzer Tier 2를 어디까지 돌릴지** — 모든 고영향 뉴스 vs event_severity≥3만 vs Classifier 결과 confidence<0.7인 경우만
-2. **대체 시나리오 노출 방식** — 이메일 본문에 펼쳐서 / 접힌 상태로 / 별도 탭만
-3. **Cause 오판 회고 주기** — 주간 자동 vs 월간 수동 리뷰
+2. **대체 가설 노출 방식** — 이메일 본문에 펼쳐서 / 접힌 상태로 / 별도 탭만
+3. **Cause 적중률 회고 주기** — 주간 자동 vs 월간 수동 리뷰
 4. **Cause Taxonomy 편집 권한** — 직접 YAML 편집 vs 대시보드 UI
-5. **원인 확신도 낮을 때 기본 행동** — 알림 발송 보류 vs "원인 불확정" 라벨로 발송
+5. ~~원인 확신도 낮을 때 기본 행동~~ → **결정됨 (2026-04-19)**: information_completeness를 주 기준으로 전환.
+   completeness<0.4면 hypothesis_confidence 무관 100% Signal 보류. 알림은 "가설·정보 부족" 라벨로 발송.
+
+**추가 질문 (2026-04-19):**
+6. **completeness 계산 가중치** — 5개 서브 지표(source_diversity 0.25 / market_context_coverage 0.20 / corroborating_signals 0.20 / freshness 0.15 / low_contradiction 0.20)가 기본값. 프로젝트별 튜닝 필요?
+7. **completeness 구간 경계** — 현재 0.7 / 0.4 두 지점. 운영 데이터 축적 후 재조정 필요
 
 ---
 

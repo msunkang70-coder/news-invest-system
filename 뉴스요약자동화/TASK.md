@@ -506,6 +506,7 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 | 04/19 | (세션) | AP News 공식 RSS 폐쇄 확인 → `site:apnews.com` Google News 쿼리로 대체 (피드 48→46, 작동하는 피드 기준) | config.py |
 | 04/19 | `a619fb4` | Phase 6 단기안 전체 GitHub origin/main 푸시 완료 (18 files, 1172+/119−) | 전체 |
 | 04/19 | (세션) | 중기안 설계 문서화 — ChatGPT 피드백 "Event → Impact 사이 Why 레이어 부재" 반영해 `docs/MIDTERM_DESIGN.md` 신규 작성. Event Taxonomy + Event Type Classifier + **Cause Analyzer** 서브스펙 + Impact 분기 + Signal 확률 가중 구조 명세 | docs/MIDTERM_DESIGN.md (신규) |
+| 04/19 | (세션) | 중기안 설계 재정렬 — (1) 원인은 확정값 아닌 **hypothesis**로 취급 (`dominant_cause`→`leading_hypothesis`, `cause_candidate`→`cause_hypothesis`). (2) Signal 판단 기준을 `hypothesis_confidence`에서 **`information_completeness`**로 전환. completeness<0.4면 confidence 무관 Signal 자동 보류. completeness_breakdown 5개 서브 지표(source_diversity·market_context_coverage·corroborating_signals·freshness·low_contradiction) 도입. "확신은 높은데 정보 부족" 오판 유형 구조적 차단 | docs/MIDTERM_DESIGN.md |
 
 ---
 
