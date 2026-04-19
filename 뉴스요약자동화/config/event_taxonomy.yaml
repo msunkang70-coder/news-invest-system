@@ -1,0 +1,276 @@
+# Event Taxonomy — NIAS 중기안 Phase 8 입력
+#
+# 설계 원칙:
+#   - 신규 키워드는 이 파일의 카테고리 트리에만 연결 (하드코딩 제거)
+#   - actions_ref / entities_ref는 Phase 6 `src/analyzers/event_actions.py` 사전을 참조 (이중 유지 금지)
+#   - market_impact_vector는 이메일 템플릿 선택 + 포트폴리오 영향 계산의 기반
+#   - 각 category.severity_range는 최소/최대 심각도. 서브타입이 default_severity를 override
+#
+# 편집 규칙 (결정 Q4):
+#   - YAML 직접 편집. 스키마 변경 시 Pydantic 검증 통과해야 함
+#   - 신규 카테고리 추가 시 market_impact_vector 필수 정의
+#
+# 버전 관리:
+#   - version 1: 2026-04-19 Phase 7 초안 (7 카테고리)
+
+version: 1
+last_updated: "2026-04-19"
+
+categories:
+  # ────────────────────────────────────────────────────────────
+  # 1. 지정학 (Geopolitical)
+  # ────────────────────────────────────────────────────────────
+  - id: geopolitical
+    label: 지정학
+    severity_range: [1, 5]
+    subtypes:
+      - id: blockade
+        label: 해상로 봉쇄
+        actions_ref: [blockade, supply_disruption]
+        entities_ref: [shipping_lane, strategic_geography]
+        default_severity: 4
+        market_template: naval_blockade
+      - id: strike
+        label: 군사 타격
+        actions_ref: [attack]
+        entities_ref: [strategic_geography]
+        default_severity: 4
+        market_template: military_strike
+      - id: sanction
+        label: 제재·금수
+        actions_ref: [sanction]
+        entities_ref: [strategic_geography, major_corporate]
+        default_severity: 2
+        market_template: sanction
+      - id: diplomatic_crisis
+        label: 외교 위기
+        actions_ref: [official_warning]
+        entities_ref: [strategic_geography]
+        default_severity: 2
+        market_template: diplomatic
+      - id: nuclear_escalation
+        label: 핵 긴장
+        actions_ref: [official_warning, attack]
+        entities_ref: [strategic_geography]
+        default_severity: 5
+        market_template: nuclear_crisis
+    market_impact_vector:
+      oil: "+"
+      defense: "+"
+      airline: "-"
+      emerging_markets: "-"
+      gold: "+"
+      dollar: "+"
+
+  # ────────────────────────────────────────────────────────────
+  # 2. 에너지 공급 (Energy Supply)
+  # ────────────────────────────────────────────────────────────
+  - id: energy_supply
+    label: 에너지 공급
+    severity_range: [1, 5]
+    subtypes:
+      - id: production_halt
+        label: 생산 중단
+        actions_ref: [supply_disruption]
+        entities_ref: [commodity]
+        default_severity: 3
+        market_template: energy_supply
+      - id: opec_decision
+        label: OPEC+ 결정
+        triggers: ["OPEC+ cut", "OPEC+ increase", "산유국 감산", "감산 연장"]
+        default_severity: 3
+        market_template: opec_action
+      - id: refinery_incident
+        label: 정유시설 사고
+        actions_ref: [major_incident]
+        entities_ref: [commodity]
+        default_severity: 3
+      - id: strategic_reserve_release
+        label: 전략비축유 방출
+        triggers: ["SPR release", "전략비축유 방출", "emergency release"]
+        default_severity: 2
+    market_impact_vector:
+      oil: "+"
+      energy_stocks: "+"
+      consumer_discretionary: "-"
+      transportation: "-"
+      utility: "+"
+
+  # ────────────────────────────────────────────────────────────
+  # 3. 공급망 (Supply Chain)
+  # ────────────────────────────────────────────────────────────
+  - id: supply_chain
+    label: 공급망
+    severity_range: [1, 4]
+    subtypes:
+      - id: chip_shortage
+        label: 반도체 공급 부족
+        actions_ref: [supply_disruption]
+        entities_ref: [commodity, major_corporate]
+        default_severity: 3
+        market_template: chip_supply
+      - id: port_closure
+        label: 항만 폐쇄
+        actions_ref: [blockade]
+        entities_ref: [shipping_lane]
+        default_severity: 3
+      - id: export_ban
+        label: 수출 통제
+        actions_ref: [sanction]
+        entities_ref: [strategic_geography, commodity]
+        default_severity: 3
+      - id: fab_incident
+        label: 팹·공장 사고
+        actions_ref: [major_incident]
+        entities_ref: [major_corporate]
+        default_severity: 2
+      - id: raw_material_shock
+        label: 원자재 충격
+        actions_ref: [supply_disruption]
+        entities_ref: [commodity]
+        default_severity: 3
+    market_impact_vector:
+      semiconductor: "-"
+      tech: "-"
+      manufacturing: "-"
+      inflation_hedge: "+"
+
+  # ────────────────────────────────────────────────────────────
+  # 4. 통화정책 (Monetary Policy)
+  # ────────────────────────────────────────────────────────────
+  - id: monetary_policy
+    label: 통화정책
+    severity_range: [1, 5]
+    subtypes:
+      - id: rate_shock
+        label: 금리 쇼크
+        actions_ref: [policy_shock]
+        entities_ref: [institution]
+        default_severity: 4
+        market_template: monetary_shock
+      - id: intervention
+        label: 외환/채권 개입
+        actions_ref: [policy_shock]
+        entities_ref: [institution]
+        default_severity: 3
+        market_template: intervention
+      - id: qe_change
+        label: 양적완화·긴축 전환
+        actions_ref: [policy_shock]
+        entities_ref: [institution]
+        default_severity: 3
+      - id: forward_guidance_shift
+        label: 포워드 가이던스 변경
+        actions_ref: [official_warning]
+        entities_ref: [institution]
+        default_severity: 2
+    market_impact_vector:
+      bonds: "?"
+      growth_stocks: "?"
+      dollar: "?"
+      reits: "?"
+      banks: "?"
+
+  # ────────────────────────────────────────────────────────────
+  # 5. 재정·무역 정책 (Fiscal/Trade Policy)
+  # ────────────────────────────────────────────────────────────
+  - id: fiscal_policy
+    label: 재정·무역정책
+    severity_range: [1, 4]
+    subtypes:
+      - id: tariff
+        label: 관세
+        triggers: ["tariff", "관세", "trade war"]
+        default_severity: 3
+        market_template: tariff
+      - id: subsidy
+        label: 보조금·산업정책
+        triggers: ["IRA", "Chips Act", "보조금"]
+        default_severity: 2
+      - id: default_risk
+        label: 국가 디폴트 리스크
+        actions_ref: [major_incident]
+        entities_ref: [institution]
+        default_severity: 4
+      - id: budget_crisis
+        label: 예산·셧다운
+        actions_ref: [major_incident]
+        entities_ref: [institution]
+        default_severity: 2
+    market_impact_vector:
+      affected_sector: "?"
+      currency: "?"
+      bonds: "?"
+
+  # ────────────────────────────────────────────────────────────
+  # 6. 실적 쇼크 (Earnings Shock)
+  # ────────────────────────────────────────────────────────────
+  - id: earnings_shock
+    label: 실적 쇼크
+    severity_range: [1, 3]
+    subtypes:
+      - id: guidance_cut
+        label: 가이던스 하향
+        triggers: ["guidance cut", "가이던스 하향", "실적 경고"]
+        default_severity: 2
+      - id: guidance_raise
+        label: 가이던스 상향
+        triggers: ["guidance raise", "가이던스 상향", "어닝 서프라이즈"]
+        default_severity: 2
+      - id: miss
+        label: 실적 미달
+        triggers: ["missed estimates", "실적 미달"]
+        default_severity: 2
+      - id: beat
+        label: 실적 초과
+        triggers: ["beat estimates", "실적 초과"]
+        default_severity: 1
+      - id: restatement
+        label: 회계 정정
+        actions_ref: [major_incident]
+        entities_ref: [major_corporate]
+        default_severity: 3
+    market_impact_vector:
+      affected_stock: "?"
+      sector: "?"
+
+  # ────────────────────────────────────────────────────────────
+  # 7. 유동성 이벤트 (Liquidity Event)
+  # ────────────────────────────────────────────────────────────
+  - id: liquidity_event
+    label: 유동성 이벤트
+    severity_range: [2, 5]
+    subtypes:
+      - id: bank_run
+        label: 뱅크런
+        actions_ref: [major_incident]
+        entities_ref: [major_corporate, institution]
+        default_severity: 5
+        market_template: bank_run
+      - id: margin_call
+        label: 마진콜·펀드 청산
+        actions_ref: [major_incident]
+        entities_ref: [major_corporate]
+        default_severity: 4
+      - id: credit_crunch
+        label: 신용 경색
+        actions_ref: [major_incident]
+        entities_ref: [institution]
+        default_severity: 4
+      - id: spread_blowout
+        label: 스프레드 급확대
+        triggers: ["credit spread", "HY spread", "스프레드 확대"]
+        default_severity: 3
+    market_impact_vector:
+      banks: "-"
+      credit: "-"
+      dollar: "+"
+      gold: "+"
+      risk_assets: "-"
+
+# ────────────────────────────────────────────────────────────
+# 참조: entity classes와 action categories는 아래에 위치
+#   - src/analyzers/event_actions.py
+#     ENTITY_CLASSES: shipping_lane / strategic_geography / commodity / institution / major_corporate
+#     ACTION_CATEGORIES: blockade / supply_disruption / attack / sanction / official_warning / policy_shock / major_incident
+# ────────────────────────────────────────────────────────────

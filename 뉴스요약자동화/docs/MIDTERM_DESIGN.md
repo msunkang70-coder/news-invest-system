@@ -719,16 +719,23 @@ Phase 11 (+6~7주):
 
 ## 10. 공개 질문 (구현 전 결정 필요)
 
-1. **Cause Analyzer Tier 2를 어디까지 돌릴지** — 모든 고영향 뉴스 vs event_severity≥3만 vs Classifier 결과 confidence<0.7인 경우만
-2. **대체 가설 노출 방식** — 이메일 본문에 펼쳐서 / 접힌 상태로 / 별도 탭만
-3. **Cause 적중률 회고 주기** — 주간 자동 vs 월간 수동 리뷰
-4. **Cause Taxonomy 편집 권한** — 직접 YAML 편집 vs 대시보드 UI
-5. ~~원인 확신도 낮을 때 기본 행동~~ → **결정됨 (2026-04-19)**: information_completeness를 주 기준으로 전환.
-   completeness<0.4면 hypothesis_confidence 무관 100% Signal 보류. 알림은 "가설·정보 부족" 라벨로 발송.
+**✅ 전부 결정 완료 (2026-04-19) — 이 섹션은 구현 스펙으로 확정.**
 
-**추가 질문 (2026-04-19):**
-6. **completeness 계산 가중치** — 5개 서브 지표(source_diversity 0.25 / market_context_coverage 0.20 / corroborating_signals 0.20 / freshness 0.15 / low_contradiction 0.20)가 기본값. 프로젝트별 튜닝 필요?
-7. **completeness 구간 경계** — 현재 0.7 / 0.4 두 지점. 운영 데이터 축적 후 재조정 필요
+1. ~~Cause Analyzer Tier 2 호출 범위~~ → **(b) `event_severity >= 3`만 LLM 호출**. 비용 최소화. 나머지는 Tier 1 규칙만 적용.
+2. ~~대체 가설 노출 방식~~ → **(b) 접힘 상태 기본**. 이메일·대시보드에 `<details>` 형태. 사용자가 클릭하면 펼침.
+3. ~~Cause 적중률 회고 주기~~ → **(a) 주간 자동**. 매주 일요일 야간 cron으로 `missed_events.json` + `cause_cache.db` 재분석. 피드백 루프 단축.
+4. ~~Cause Taxonomy 편집 방식~~ → **(a) YAML 직접 편집**. `config/cause_taxonomy.yaml` · `config/event_taxonomy.yaml`. 대시보드 UI는 구현 안 함.
+5. ~~원인 확신도 낮을 때 기본 행동~~ → **결정됨**: information_completeness를 주 기준으로 전환. completeness<0.4면 hypothesis_confidence 무관 100% Signal 보류. 알림은 "가설·정보 부족" 라벨.
+6. ~~completeness 5지표 가중치~~ → **기본값 유지** (source_diversity 0.25 / market_context_coverage 0.20 / corroborating_signals 0.20 / freshness 0.15 / low_contradiction 0.20). 2주 운영 후 튜닝 여부 재평가.
+7. ~~completeness 구간 경계 0.7/0.4~~ → **초기값 유지 + 2주 후 재조정**. Phase 7 데이터 축적 기간과 맞물려 재검토.
+
+### 10-1. 확정 사항 요약 (구현 반영 시 체크리스트)
+- [x] Tier 2 호출 조건: `if event_severity >= 3 and classifier_confidence < threshold: call_llm()`
+- [x] 이메일 템플릿: Dominant 가설 기본 노출 + `<details><summary>대체 가설 보기</summary>...</details>`
+- [x] 주간 회고 cron: `scheduler/pipeline_scheduler.py`에 `CronTrigger(day_of_week="sun", hour=23)` 추가
+- [x] Taxonomy 편집: YAML 직접. 스키마 검증용 Pydantic 모델만 제공 (UI 미구현)
+- [x] completeness 가중치 상수: `src/analyzers/cause_analyzer.py` 모듈 상단 `_DEFAULT_WEIGHTS` 딕셔너리
+- [x] completeness 구간: `_THRESHOLD_HIGH = 0.7`, `_THRESHOLD_LOW = 0.4` 상수. 2주 후 운영 데이터로 재평가
 
 ---
 

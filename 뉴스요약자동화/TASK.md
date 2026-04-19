@@ -507,6 +507,10 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 | 04/19 | `a619fb4` | Phase 6 단기안 전체 GitHub origin/main 푸시 완료 (18 files, 1172+/119−) | 전체 |
 | 04/19 | (세션) | 중기안 설계 문서화 — ChatGPT 피드백 "Event → Impact 사이 Why 레이어 부재" 반영해 `docs/MIDTERM_DESIGN.md` 신규 작성. Event Taxonomy + Event Type Classifier + **Cause Analyzer** 서브스펙 + Impact 분기 + Signal 확률 가중 구조 명세 | docs/MIDTERM_DESIGN.md (신규) |
 | 04/19 | (세션) | 중기안 설계 재정렬 — (1) 원인은 확정값 아닌 **hypothesis**로 취급 (`dominant_cause`→`leading_hypothesis`, `cause_candidate`→`cause_hypothesis`). (2) Signal 판단 기준을 `hypothesis_confidence`에서 **`information_completeness`**로 전환. completeness<0.4면 confidence 무관 Signal 자동 보류. completeness_breakdown 5개 서브 지표(source_diversity·market_context_coverage·corroborating_signals·freshness·low_contradiction) 도입. "확신은 높은데 정보 부족" 오판 유형 구조적 차단 | docs/MIDTERM_DESIGN.md |
+| 04/19 | `517d847` | 단기안 잔여 보정 3건 — Reuters 직접 RSS 2개 제거(실질 폐쇄), `docs_cache/*.pkl` + `.claude/` gitignore 추가 | config.py, .gitignore |
+| 04/19 | `d70e87b` | KPI.md 섹션 8 신규 — Phase 6 단기안 12시간 실측 데이터 (Fallback 510건·30.7%·L3 63%, geo_level 98.2%, missed_events 0건) | KPI.md |
+| 04/19 | (세션) | 중기안 공개 질문 7개 전원 결정 완료 — Q1 severity≥3만 LLM / Q2 대체 가설 접힘 / Q3 주간 자동 / Q4 YAML 직접 / Q5 completeness 주 기준 / Q6 기본 가중치 / Q7 초기 경계 + 2주 후 재평가 | docs/MIDTERM_DESIGN.md |
+| 04/19 | (세션) | **Phase 7 착수** — 중기안 Event Taxonomy 초안 작성. 7 카테고리(geopolitical·energy_supply·supply_chain·monetary_policy·fiscal_policy·earnings_shock·liquidity_event) × 각 3~5 서브타입 + market_impact_vector | config/event_taxonomy.yaml (신규) |
 
 ---
 
@@ -535,8 +539,18 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 - 진단: (a) Reuters 쿼리의 `business OR markets` 필터가 breaking/world 카테고리 배제, (b) wire service 구독 없음, (c) RSS 30건 한도, (d) 지정학 키워드 사전에 "Hormuz blockade" 자연어 표현 누락
 - 근본 방향: 키워드 의존도 축소 + 수집 범위 확대 + 누락 감지 루프 구축 (단기안). LLM 기반 event_type_classifier는 중기안으로 분리
 
-### Phase 6 이후 중기안 로드맵 (설계만)
-📄 **상세 설계 문서:** [`docs/MIDTERM_DESIGN.md`](./docs/MIDTERM_DESIGN.md)
+### Phase 7+ 중기안 — 착수 중 (2026-04-19~)
+📄 **상세 설계 문서:** [`docs/MIDTERM_DESIGN.md`](./docs/MIDTERM_DESIGN.md) (공개 질문 전원 해소됨)
+📄 **Event Taxonomy 초안:** [`config/event_taxonomy.yaml`](./config/event_taxonomy.yaml)
+
+**Phase 7 진행 현황 (+1~2주):**
+- [x] Task 7.1 — 중기안 공개 질문 7개 결정 (Q1 severity≥3 / Q2 접힘 / Q3 주간 자동 / Q4 YAML 직접 / Q5 completeness / Q6 기본값 / Q7 초기값+2주 재평가)
+- [x] Task 7.2 — Event Taxonomy YAML 정의 (7 카테고리, 2026-04-19 초안)
+- [ ] Task 7.3 — Cause Taxonomy YAML 정의 (energy_supply·geopolitical·monetary_policy 샘플 시작)
+- [ ] Task 7.4 — missed_events 데이터 1~2주 축적 (현재 0건, 시간 소요)
+- [ ] Task 7.5 — 단기안 튜닝 (축적 데이터 기반)
+
+**Phase 8~11은 Phase 7 완료 후 순차 착수 (아래 원문 유지):**
 
 - Event Taxonomy (YAML 외부화) — 카테고리 7종 + 서브타입
 - Event Type Classifier 2-Tier (규칙 + Gemini Flash)
