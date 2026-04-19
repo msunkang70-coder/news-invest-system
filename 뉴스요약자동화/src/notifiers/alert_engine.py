@@ -33,6 +33,13 @@ class AlertRule:
 
 
 class AlertEngine:
+    # 한 뉴스가 여러 룰에 매칭되면 상위 1개만 발송 (지정학 템플릿이 정보량 많으므로 우선)
+    # 이벤트후보는 긴급속보 아래, 관심종목 위 — 키워드 miss 된 이벤트 fallback 경로
+    NEWS_RULE_PRIORITY = [
+        "지정학_L4", "지정학_L3", "긴급속보", "이벤트후보",
+        "관심종목", "경제지표", "고영향뉴스",
+    ]
+
     def __init__(self, rules: List[AlertRule] = None, max_daily_alerts: int = 10):  # QA 개선: 20→10
         self.rules = rules or self._default_rules()
         self.max_daily_alerts = max_daily_alerts
@@ -53,6 +60,12 @@ class AlertEngine:
                      ["email"], "high_impact", cooldown_minutes=60, batch_window_minutes=60),
             AlertRule("관심종목", lambda n: isinstance(n, NewsItem) and bool(n.tagged_stocks),
                      ["email"], "watchlist", cooldown_minutes=30, batch_window_minutes=30),
+            # 이벤트후보 (단기안 Fallback) — 키워드 miss 되었으나 (엔티티×액션)로 승격된 뉴스
+            AlertRule("이벤트후보",
+                     lambda n: isinstance(n, NewsItem)
+                               and getattr(n, "event_fallback", False)
+                               and (n.impact_score or 0) >= 5.5,
+                     ["email"], "urgent", cooldown_minutes=60, batch_window_minutes=0),
             AlertRule("경제지표", lambda n: isinstance(n, NewsItem) and n.source_type in ("FRED", "BOK"),
                      ["email"], "indicator", cooldown_minutes=0),
             # 일일리포트는 스케줄러에서 직접 트리거
@@ -79,29 +92,56 @@ class AlertEngine:
         ]
 
     def evaluate_news(self, items: List[NewsItem]) -> List[dict]:
-        """뉴스 목록에 대해 알림 룰 평가"""
+        """뉴스 목록에 대해 알림 룰 평가 — 아이템당 최상위 우선순위 룰 1개만 발송
+
+        조건 매칭이 전무한 뉴스 중 impact_score가 임계값 이상인 건은
+        data/missed_events.json 에 기록되어 중기안 튜닝 입력으로 재사용됨.
+        """
         self._check_daily_reset()
         alerts = []
 
-        for item in items:
-            for rule in self.rules:
-                try:
-                    if rule.condition(item):
-                        if self._check_cooldown(rule, item) and self.daily_count < self.max_daily_alerts:
-                            alert = {
-                                "rule": rule.name,
-                                "channels": rule.channels,
-                                "template": rule.template,
-                                "item": item,
-                                "timestamp": datetime.now().isoformat(),
-                            }
+        rule_map = {r.name: r for r in self.rules}
+        prioritized = [rule_map[n] for n in self.NEWS_RULE_PRIORITY if n in rule_map]
 
-                            if rule.batch_window_minutes == 0:
-                                alerts.append(alert)
-                                self.daily_count += 1
-                                self._record_cooldown(rule, item)
-                            else:
-                                self._add_to_batch(rule, alert)
+        for item in items:
+            any_condition_matched = False
+            for rule in prioritized:
+                try:
+                    if not rule.condition(item):
+                        continue
+                    any_condition_matched = True
+                    if not self._check_cooldown(rule, item):
+                        break  # 쿨다운 중이면 하위 룰로 폴스루하지 않음 (중복 알림 방지)
+                    if self.daily_count >= self.max_daily_alerts:
+                        break
+                    alert = {
+                        "rule": rule.name,
+                        "channels": rule.channels,
+                        "template": rule.template,
+                        "item": item,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                    if rule.batch_window_minutes == 0:
+                        alerts.append(alert)
+                        self.daily_count += 1
+                        self._record_cooldown(rule, item)
+                    else:
+                        self._add_to_batch(rule, alert)
+                    break
+                except Exception:
+                    continue
+
+            # 어떤 룰 조건도 매칭 안 된 경우 — 놓친 중요 뉴스로 의심. 별도 로그에 기록.
+            if not any_condition_matched:
+                try:
+                    from utils.missed_events import log_missed_event
+                    def _safe_match(rule, it):
+                        try:
+                            return bool(rule.condition(it))
+                        except Exception:
+                            return False
+                    rule_checks = {r.name: _safe_match(r, item) for r in prioritized}
+                    log_missed_event(item, rule_checks)
                 except Exception:
                     pass
 

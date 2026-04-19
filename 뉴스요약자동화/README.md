@@ -68,19 +68,26 @@ python src/main.py --sources kr
 ### PC 켤 때 자동 시작 (설정 완료됨)
 
 ```
-PC 부팅 → start_nias.bat 자동 실행 → 스케줄러 + 대시보드 시작
+PC 로그온 → Task Scheduler "NIAS_Scheduler" → start_nias.bat → 스케줄러 + 대시보드
 ```
 
-Windows 시작 프로그램에 등록되어 있어, **PC를 켜기만 하면 자동으로 동작**합니다.
+Windows **작업 스케줄러**에 등록되어 있어, PC를 켜고 로그인만 하면 자동 동작합니다.
+(2026-04-18 이전의 Startup 폴더 방식은 Windows Update 강제 재부팅 후 복구 실패 이슈로 폐기됨)
+
+- 트리거: 로그온 시 + 5분마다 keep-alive 점검
+- 실패 시 1분 후 3회 재시도
+- 배터리·전원 상태 무관, 절전 복귀 시 지나간 트리거 자동 실행
+- 상태 확인: `taskschd.msc` → `NIAS_Scheduler` 또는 `Get-ScheduledTaskInfo -TaskName NIAS_Scheduler`
 
 ### 자동 실행 스케줄
 
 | 시간대 | 작업 | 주기 |
 |--------|------|------|
-| 06:00~09:00 (장전) | 뉴스 수집 | 5분 |
-| 09:00~15:30 (장중) | 뉴스 수집 | 5분 |
-| 15:30~23:00 (장후) | 뉴스 수집 | 15분 |
+| 06:00~09:00 (장전) | 뉴스 수집 (all) | 5분 |
+| 09:00~15:30 (장중) | 뉴스 수집 (all) | 5분 |
+| 15:30~23:00 (장후) | 뉴스 수집 (all) | 15분 |
 | 23:00~06:00 (야간) | 글로벌 뉴스만 | 60분 |
+| **24/7** | **지정학 전용 fast (호르무즈·해상봉쇄·이란·대만·북한 핫스팟 포함)** | **5분** |
 | **항상** | 시장지표 모니터링 (VIX, 환율, 유가 등 13개) | 10분 |
 | 월~금 08:00, 18:00 | 일일 투자 리포트 이메일 | 자동 |
 
@@ -228,20 +235,35 @@ start_nias.bat
 
 ---
 
-## 수집 소스 현황 (42개)
+## 수집 소스 현황 (all 모드 기준 48개 피드 + 외부 API)
 
 | 카테고리 | 소스 | 수량 |
 |---------|------|------|
 | 국내 뉴스 RSS | 연합뉴스, 한경, 매경, 조선, SBS | 5 |
-| 글로벌 뉴스 RSS | Reuters, CNBC, Bloomberg, WSJ, FT, Investing | 6 |
+| 글로벌 뉴스 RSS | Reuters, CNBC, Bloomberg, WSJ, FT, Investing (2026-04-18: `breaking/world` 카테고리 포함하도록 쿼리 완화) | 6 |
 | 지정학 RSS | Defense One, War on the Rocks, The Diplomat, 38 North | 4 |
 | 한국어 Google News | 삼성전자, SK하이닉스, 코스피, 금리환율, 유가에너지 | 5 |
-| 영어 Google News | 반도체, AI, 금리, 유가, 한국경제, 관세, 전쟁, 제재, 대만 | 9 |
+| 영어 Google News (섹터) | 반도체, AI, 금리, 유가, 한국경제, 관세 | 6 |
+| 영어 Google News (지정학) | 전쟁/분쟁, 제재, 대만/중국 | 3 |
+| **지정학 핫스팟 (2026-04-18 신규)** | 호르무즈, 해상봉쇄, 수에즈, 이란 긴장, 대만해협, 북한 도발, 우크라이나, 홍해/바벨만데브 | **8** |
 | SNS | Fed 발언, 증시 전문가 | 2 |
 | 전자공시 | DART | 1 |
 | 경제지표 | FRED(미국 5개) + 한은(2개) + ECOS(4개) | 3 API |
 | 시장지표 | yfinance(7) + FDR(1) + Crypto F&G(1) | 9 ticker |
 | 야간선물 | KIS Open API (fallback: yfinance) | 1 |
+
+### 해외 직접 RSS (2026-04-19 **활성화**, `ENABLE_EXTENDED_GLOBAL=True`)
+Google News 간접 수집의 카테고리 필터 한계를 보완하기 위해 아래 9개 피드 활성화 — 전체 피드 **46개**:
+- **AP (Google News 경유, `site:apnews.com`)** — 공식 RSS 폐쇄로 GN 필터로 대체
+- BBC World / BBC Business (직접)
+- Al Jazeera (직접)
+- Guardian World / Guardian Business (직접)
+- Reuters Top News / Reuters World Direct (직접, 간헐적)
+- NYT World (직접)
+
+### 수집 정책 (2026-04-18 보정)
+- `MAX_ARTICLES_PER_FEED`: 30 → **100** (RSS 밀림·3일 공백 복원력 강화)
+- 지정학 전용 `geopolitical_fast` 잡: 24/7 5분 간격 (main 잡과 2분 오프셋)
 
 ## 핵심 기능
 
@@ -253,7 +275,10 @@ start_nias.bat
 | 지정학 에스컬레이션 | L1(긴장) ~ L5(전면위기) 5단계 분류 |
 | 교차 자산 영향 체인 | 5대 체인 (중동→유가, 달러→원화, 대만→반도체, 금리→성장주, 북한→코스피) |
 | 영어 뉴스 자동 번역 | Google Translate (LLM 미소모) |
-| 시장지표 임계값 알림 | VIX, 환율, 유가, 국채, 야간선물 + 정량 평가/시나리오/행동 제안 |
+| 시장지표 임계값 알림 | VIX, 환율, 유가, 국채, 야간선물 + Level×Direction×Change 복합 판단 / 상태 변화형 / 접근·돌파·유지 구분 / 현재 근접 시나리오 마커 / 행동 조건 1줄 / 지표별 시장 영향 |
+| **이벤트 Fallback (2026-04-18)** | 키워드 사전 miss 시 (엔티티 클래스 × 액션 카테고리) 매트릭스로 L1~L3 승격. shipping_lane+blockade 등 치명 조합은 impact +2.5 부스트. `이벤트후보` 알림 룰이 긴급속보 아래 우선순위로 발송 |
+| **누락 이벤트 로거** | impact≥5.0인데 모든 룰 탈락한 뉴스는 `data/missed_events.json`에 롤링 저장. 대시보드 `🔔 놓친 이벤트` 탭에서 확인 가능 |
+| **중복 알림 제거** | 한 뉴스가 여러 룰에 매칭되어도 최상위 1개만 발송 (NEWS_RULE_PRIORITY) |
 
 ---
 

@@ -491,3 +491,49 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 | 04/13 | `492b310` | README.md 전면 개편 — 운영 가이드+트러블슈팅+유지보수 통합 | README.md |
 | 04/13 | `1ef7432` | 번역 누락 전면 수정 — 대시보드+일일리포트+주간리포트+콘솔 TOP5 모두 적용 | app.py, email_notifier.py, weekly_report.py, main.py |
 | 04/13 | 다수 | 대시보드 1~3순위 + 데이터 신뢰도 3건 (신선도+소스가중치+fallback규칙) | app.py, impact_scorer.py, summarizer.py, freshness.py |
+| 04/18 | (세션) | 04/15~04/18 3일 중단 복구 — Windows Update 재부팅이 Startup 폴더 자동 시작을 무력화 → Task Scheduler `NIAS_Scheduler` (로그온 시 + 5분 keep-alive + 3회 재시도)로 이관, 기존 `NIAS_AutoStart.lnk` 제거 | 작업 스케줄러, start_nias.bat |
+| 04/18 | (세션) | 중복 이메일 알림 제거 — 한 뉴스가 여러 룰에 매칭되면 최상위 1개만 발송. NEWS_RULE_PRIORITY(지정학_L4>L3>긴급속보>…) 도입 | alert_engine.py |
+| 04/18 | (세션) | 지표 이메일 판단 로직 복합화 — Level+Direction+변화율 조합, 시간(trend) 반영, 상태를 '위험 확대/유지/완화'처럼 변화형으로, 접근·돌파·유지 구분, 현재 근접 시나리오 마커, 행동 제안 조건 1줄, 지표별 시장 영향 1줄 | email_notifier.py |
+| 04/18 | (세션) | 단기안 이벤트 Fallback 레이어 — (엔티티 클래스 × 액션 카테고리) 매트릭스로 키워드 miss 뉴스 L1~L3 승격. shipping_lane+blockade/supply_disruption/attack = L3 + impact +2.5. `이벤트후보` 룰 신설 (priority: 긴급속보 바로 아래) | analyzers/event_actions.py (신규), geopolitical_classifier.py, impact_scorer.py, alert_engine.py, models/news_item.py |
+| 04/18 | (세션) | 누락 이벤트 로거 — impact≥5.0인데 모든 룰에 탈락한 뉴스를 `data/missed_events.json`에 롤링 저장 (상한 2000). 탈락 사유 자동 분석 | utils/missed_events.py (신규), alert_engine.py |
+| 04/18 | (세션) | Reuters navy Hormuz 속보 미수집 진단 → 수집 소스 확장: Reuters/Bloomberg/WSJ/FT 쿼리에서 카테고리 제한 완화(breaking/world 포함), dead code였던 GOOGLE_NEWS_QUERIES/GEOPOLITICAL 실제 연결, 지정학 핫스팟 쿼리 8개 신규(호르무즈·해상봉쇄·수에즈·이란·대만·북한·우크라이나·홍해), MAX_ARTICLES_PER_FEED 30→100, AP/BBC/Al Jazeera/Guardian/Reuters/NYT 직접 RSS 11개 준비(`ENABLE_EXTENDED_GLOBAL` 플래그 OFF) | config.py, collectors/rss_collector.py |
+| 04/18 | (세션) | 지정학 전용 fast 잡 신설 — 24/7 5분 간격(main과 2분 오프셋), `sources="geopolitical"` 한정. 스케줄러 작업 8개→9개 | scheduler/pipeline_scheduler.py |
+| 04/18 | (세션) | 대시보드 QA — 환율 중복(`KRW/USD` FDR 실시간 + `KRW/USD_ECOS` 한은 공시 1470 vs 1481) 해결: ECOS ticker를 UI에서만 숨김(_UI_HIDDEN_TICKERS). KPI 상단 카드 8→12개로 확대. `🔔 놓친 이벤트` 신규 탭 추가 — missed_events.json 기반 metrics 3종 + 테이블 | app.py |
+| 04/18 | (세션) | DB 스키마 마이그레이션 — `news_items`에 event_fallback/event_category/event_entity_class 3개 컬럼 ALTER 추가, save_news_items가 해당 값 영속화. init_db 실행 시 자동 migration (중복 오류 무시) | utils/db.py |
+| 04/18 | (세션) | 일회성 누락 복기 backfill 스크립트 — 지난 7일 geo_level None & impact≥5 뉴스를 fallback 포함 재분류·재스코어링, event_fallback 또는 impact≥7 건만 상위 5건 재발송. 제목 `[사후 알림]` 프리픽스 + 본문 배너 | scripts/backfill_missed.py (신규) |
+| 04/19 | (세션) | Gmail OAuth 토큰 만료(invalid_grant) → `scripts/reauth_gmail.py` 일회성 재인증 스크립트 작성 후 브라우저 OAuth 재완료. backfill 5건 모두 발송 성공 (Hormuz·Iran Navy·Powell 해임 위협) | scripts/reauth_gmail.py (신규) |
+| 04/19 | (세션) | `ENABLE_EXTENDED_GLOBAL=True` 활성화 — AP Top/World/Business, BBC World/Business, Al Jazeera, Guardian World/Business, Reuters Top/World 직접 RSS, NYT World 총 11개 피드 추가 (피드 37→48). Google News 간접 수집 의존도 축소 | config.py |
+
+---
+
+## Phase 6 — 단기안 이벤트 Fallback + 수집 커버리지 확장 (2026-04-18 세션)
+
+**목표:** "키워드 사전이 있어야만 잡는 구조" → "엔티티 × 액션 매트릭스로 의미적 감지"로 1차 탈피.
+
+### 완료
+- [x] Task 6.1 — 중복 이메일 제거 (룰 우선순위)
+- [x] Task 6.2 — 지표 이메일 판단 로직 복합화 (Level+Direction+Change)
+- [x] Task 6.3 — 이벤트 Fallback 레이어 (event_actions.py, 매트릭스, 임계값 보정)
+- [x] Task 6.4 — `이벤트후보` 알림 룰 신설
+- [x] Task 6.5 — 누락 이벤트 로거 (`missed_events.json`)
+- [x] Task 6.6 — 수집 소스 확장 (Reuters/BB/WSJ/FT 쿼리 완화 + 핫스팟 8개 + dead code 활성화 + MAX_ARTICLES 100)
+- [x] Task 6.7 — 지정학 fast 5분 주기 잡 신설
+- [x] Task 6.8 — 대시보드 QA (환율 중복 해결, KPI 12개, 놓친 이벤트 탭)
+- [x] Task 6.9 — DB 스키마 event_fallback 3컬럼 마이그레이션
+- [x] Task 6.10 — 일회성 누락 복기 backfill 스크립트 + dry-run 검증
+
+### 대기
+- [x] Task 6.11 — backfill `--send` 실제 발송 (2026-04-19 10:XX, 5건 모두 성공). Gmail OAuth 토큰 만료 1회 발생 → 재인증 후 재시도. 핫스팟 쿼리가 "Iran Navy Hormuz 봉쇄" 관련 속보 4건 새로 포착
+- [x] Task 6.12 — `ENABLE_EXTENDED_GLOBAL=True` 활성화 (2026-04-19). AP Top/World/Business, BBC World/Business, Al Jazeera, Guardian World/Business, Reuters Top/World 직접 RSS, NYT World 총 11개 피드 추가 (전체 피드 37→48)
+
+### Phase 6 진입 배경
+- 04/15 07:50 이후 3일간 스케줄러 중단(Windows Update 재부팅) + 복귀 후 Hormuz blockade 관련 Reuters 원문 속보("Iran's navy tells ships on radio that Strait of Hormuz is shut again") 미수집 확인
+- 진단: (a) Reuters 쿼리의 `business OR markets` 필터가 breaking/world 카테고리 배제, (b) wire service 구독 없음, (c) RSS 30건 한도, (d) 지정학 키워드 사전에 "Hormuz blockade" 자연어 표현 누락
+- 근본 방향: 키워드 의존도 축소 + 수집 범위 확대 + 누락 감지 루프 구축 (단기안). LLM 기반 event_type_classifier는 중기안으로 분리
+
+### Phase 6 이후 중기안 로드맵 (설계만)
+- Event Taxonomy (YAML 외부화)
+- Event Type Classifier 2-Tier (규칙 + Gemini Flash)
+- AP/BBC/Al Jazeera 직접 RSS 활성화
+- X API / Telegram 공식 채널 모니터링
+- 누락 복기 cron 야간 자동 LLM 재분류

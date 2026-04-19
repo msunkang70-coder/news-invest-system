@@ -48,6 +48,14 @@ class PipelineScheduler:
             kwargs={"sources": "global"}, id="overnight", replace_existing=True,
         )
 
+        # 단기안: 지정학 전용 fast 수집 — 24/7 5분 간격 (main 잡과 2분 오프셋으로 경합 완화)
+        # - 핫스팟 쿼리(호르무즈·해상봉쇄·이란·대만·북한 등) 포함
+        # - main 잡이 이미 돌고 있어도 dedup/cache가 중복 처리 차단
+        self.scheduler.add_job(
+            self._run_news, CronTrigger(minute="2-59/5"),
+            kwargs={"sources": "geopolitical"}, id="geopolitical_fast", replace_existing=True,
+        )
+
         # 시장지표 모니터링: 항상 10분 간격
         self.scheduler.add_job(
             self._run_indicators, CronTrigger(minute="*/10"),
@@ -72,7 +80,7 @@ class PipelineScheduler:
             id="batch_flush", replace_existing=True,
         )
 
-        logger.info("[스케줄러] 8개 작업 등록 완료")
+        logger.info("[스케줄러] 9개 작업 등록 완료")
 
     def start(self):
         """스케줄러 시작"""

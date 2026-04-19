@@ -353,160 +353,283 @@ def build_urgent_email(item) -> tuple[str, str]:
     return subject, html
 
 
+def _trend_label(chg: float) -> str:
+    """변화율 기반 방향·강도 라벨"""
+    if chg > 10: return "급등 중"
+    if chg > 3:  return "상승 중"
+    if chg < -10: return "급락 중"
+    if chg < -3:  return "하락 중"
+    return "횡보"
+
+
 def _build_indicator_assessment(indicator) -> str:
-    """지표 종류별 정량 평가 + 시나리오 + 행동 제안 HTML 생성 (템플릿 전용)"""
+    """지표 종류별 정량 평가 + 시나리오 + 행동 제안 HTML (Level+Direction+Change 복합 판단)"""
     ticker = indicator.ticker
     val = indicator.current_value
     chg = indicator.change_pct
+    trend = _trend_label(chg)
+    # 기본값 (else 블록/누락 방지)
+    market_impact = f"{indicator.name} 변동은 관련 섹터 수급에 영향"
+    current_scenario = 0  # 1~3 중 현재 근접 시나리오 (0=미매핑)
+    short_condition = "추세 반전 시 재검토"
+    mid_condition = "2주 이상 추세 지속 시 조정"
 
     if ticker == "^VIX":
         if val >= 30:
-            risk_grade = "상위 5% 수준 (패닉 구간, 평균 5-10 거래일 체류)"
-            s1 = f"▸ VIX 35 이상 → 추가 급락 가능, 헷지 비용 급등"
-            s2 = f"▸ VIX 25 하회 → 1-2주 내 안정 복귀 (과거 70% 확률)"
-            s3 = f"▸ VIX 40 돌파 → 시스템 리스크, 현금 비중 극대화"
+            state = "위험 확대" if chg > 3 else ("위험 완화" if chg < -3 else "위험 유지")
+            threshold_note = "30선 돌파·유지"
+            risk_grade = f"{state} — 패닉 구간 {trend} ({threshold_note}, 상위 5%, 평균 5-10 거래일)"
+            s1 = "▸ VIX 35 이상 → 추가 급락 가능, 헷지 비용 급등"
+            s2 = "▸ VIX 25 하회 → 1-2주 내 안정 복귀 (과거 70% 확률)"
+            s3 = "▸ VIX 40 돌파 → 시스템 리스크, 현금 비중 극대화"
+            current_scenario = 1 if chg >= 0 else 2
             short_action = "위험자산 비중 20-30% 즉시 축소. 추격 매도 금지"
             mid_action = "VIX 25 하회 확인 전까지 신규 매수 보류"
+            short_condition = "VIX 35+ 돌파 시 축소 폭 확대, 25 하회 시 해제"
+            mid_condition = "2주 연속 25 하회 유지 시 정상화"
         elif val >= 25:
-            risk_grade = "상위 20% 수준 (경계 구간, 평균 3-7 거래일)"
-            s1 = f"▸ VIX 30 돌파 → 공포 구간 전환, 매도 압력 가속"
-            s2 = f"▸ VIX 20 하회 → 이벤트 소화 후 안정 (1-2주)"
-            s3 = f"▸ VIX 25 유지 → 횡보, 방향 탐색 구간"
+            state = "경계 상승" if chg > 3 else ("경계 완화" if chg < -3 else "경계 유지")
+            threshold_note = "25선 상회 — 30선 접근" if chg > 5 else "25선 상회 유지"
+            risk_grade = f"{state} — 불안 {trend} ({threshold_note}, 상위 20%, 평균 3-7 거래일)"
+            s1 = "▸ VIX 30 돌파 → 공포 구간 전환, 매도 압력 가속"
+            s2 = "▸ VIX 20 하회 → 이벤트 소화 후 안정 (1-2주)"
+            s3 = "▸ VIX 25 유지 → 횡보, 방향 탐색 구간"
+            current_scenario = 1 if chg > 3 else (2 if chg < -3 else 3)
             short_action = "신규 매수 보류. 기존 포지션 스톱로스 점검"
             mid_action = "VIX 20 하회 확인 후 정상 매매 재개"
+            short_condition = "30 돌파 시 방어 강화, 22 하회 시 단계적 완화"
+            mid_condition = "20 하회 1주 유지 시 정상화"
         else:
-            risk_grade = "정상 범위 (안정 구간)"
-            s1 = f"▸ VIX 20 이상 → 단기 불안 징후, 관찰 필요"
-            s2 = f"▸ VIX 15 이하 → 과도한 안심, 변동성 매도 전략 유효"
-            s3 = f"▸ 돌발 이벤트 시 25+ 급등 가능 — 헷지 준비"
+            state = "경계 접근" if (val >= 22 and chg > 5) else ("안정 유지" if chg >= 0 else "안정 강화")
+            threshold_note = "25선 접근 중" if (val >= 22 and chg > 3) else "정상 범위"
+            risk_grade = f"{state} — 변동성 {trend} ({threshold_note})"
+            s1 = "▸ VIX 20 이상 → 단기 불안 징후, 관찰 필요"
+            s2 = "▸ VIX 15 이하 → 과도한 안심, 변동성 매도 전략 유효"
+            s3 = "▸ 돌발 이벤트 시 25+ 급등 가능 — 헷지 준비"
+            current_scenario = 1 if (val >= 20 or chg > 5) else (2 if val <= 15 else 3)
             short_action = "정상 매매 가능. 변동성 매도 전략 유효"
             mid_action = "추세 추종 전략 유지"
+            short_condition = "22 돌파 시 방어 전환, 15 하회 시 변동성 매도 강화"
+            mid_condition = "25+ 급등 신호 발생 시 즉시 헷지 실행"
+        market_impact = "VIX는 S&P500과 역상관. 상승은 위험자산 회피·헷지 비용↑, 하락은 리스크온 복귀 신호"
 
-    elif ticker in ("KRW/USD",):
+    elif ticker in ("KRW/USD", "KRW/USD_ECOS"):
         if val >= 1450:
-            risk_grade = "상위 10% 수준 (당국 개입 경계, 외국인 유출 가속)"
-            s1 = f"▸ 1,500원 돌파 → 심리적 저항 붕괴, 추가 약세"
-            s2 = f"▸ 1,400원 하회 → 중동 리스크 완화 시 2-4주 내 복귀"
-            s3 = f"▸ 1,450원 유지 → 수출주 환차익 지속, 내수주 부담"
+            state = "위험 확대" if chg > 0.3 else ("위험 완화" if chg < -0.3 else "위험 유지")
+            threshold_note = "1,500원 접근" if val >= 1480 else "1,450선 상회 유지"
+            risk_grade = f"{state} — 원화 약세 {trend} ({threshold_note}, 당국 개입 경계)"
+            s1 = "▸ 1,500원 돌파 → 심리적 저항 붕괴, 추가 약세"
+            s2 = "▸ 1,400원 하회 → 중동 리스크 완화 시 2-4주 내 복귀"
+            s3 = "▸ 1,450원 유지 → 수출주 환차익 지속, 내수주 부담"
+            current_scenario = 1 if chg > 0 else (2 if chg < -0.5 else 3)
             short_action = "수출주(삼성전자, 현대차) 보유 유지. 내수주 신규 매수 보류"
             mid_action = "1,400원 하회 확인 시 내수주/여행주 비중 확대"
+            short_condition = "1,500 돌파 시 외국인 유출 가속 대비, 1,430 하회 시 완화"
+            mid_condition = "1,400원 안정화 2주 확인 후 내수주 재진입"
         elif val >= 1400:
-            risk_grade = "상위 25% 수준 (경계 구간)"
-            s1 = f"▸ 1,450원 돌파 → 외국인 순매도 가속, 코스피 하방 압력"
-            s2 = f"▸ 1,350원 하회 → 안정 구간 복귀"
-            s3 = f"▸ 1,400원대 횡보 → 수출주 유리, 외국인 수급 부담"
+            state = "경계 강화" if chg > 0.3 else ("경계 완화" if chg < -0.3 else "경계 유지")
+            threshold_note = "1,450선 접근 중" if (val >= 1430 and chg > 0) else "1,400선 상회 유지"
+            risk_grade = f"{state} — 원화 약세 {trend} ({threshold_note})"
+            s1 = "▸ 1,450원 돌파 → 외국인 순매도 가속, 코스피 하방 압력"
+            s2 = "▸ 1,350원 하회 → 안정 구간 복귀"
+            s3 = "▸ 1,400원대 횡보 → 수출주 유리, 외국인 수급 부담"
+            current_scenario = 1 if chg > 0.3 else (2 if chg < -0.5 else 3)
             short_action = "외국인 순매도 종목 매수 보류. 수출주 비중 확대"
             mid_action = "환율 1,380원 하회 확인 후 내수주 재진입"
+            short_condition = "1,450 돌파 시 방어 강화, 1,380 하회 시 완화"
+            mid_condition = "1,380원 안정 1주 확인 후 내수주 분할 매수"
         else:
-            risk_grade = "정상 범위"
-            s1 = f"▸ 1,400원 돌파 → 경계 구간 진입, 수출주 부각"
-            s2 = f"▸ 1,300원 하회 → 원화 강세, 내수주 유리"
-            s3 = f"▸ 현 수준 유지 → 환율 중립, 종목 선별 장세"
+            state = "경계 접근" if chg > 0.5 else ("안정 강화" if chg < -0.3 else "안정 유지")
+            threshold_note = "1,400선 접근 중" if (val >= 1380 and chg > 0.3) else "정상 범위"
+            risk_grade = f"{state} — 환율 {trend} ({threshold_note})"
+            s1 = "▸ 1,400원 돌파 → 경계 구간 진입, 수출주 부각"
+            s2 = "▸ 1,300원 하회 → 원화 강세, 내수주 유리"
+            s3 = "▸ 현 수준 유지 → 환율 중립, 종목 선별 장세"
+            current_scenario = 1 if chg > 0.3 else (2 if chg < -0.3 else 3)
             short_action = "정상 매매 가능"
             mid_action = "현 전략 유지"
+            short_condition = "1,400 돌파 시 수출주로 전환, 1,300 하회 시 내수주 강화"
+            mid_condition = "환율 방향성 확인 후 섹터 비중 조정"
+        market_impact = "원달러 상승은 수출주 환차익↑·외국인 순매도↑·내수/여행주 부담, 하락은 반대"
 
     elif ticker in ("CL=F", "BZ=F"):
         abs_chg = abs(chg)
+        direction_ko = "상승" if chg > 0 else "하락"
         if abs_chg >= 8:
-            risk_grade = f"상위 3% 수준 (일변동 {abs_chg:.1f}%, OPEC/지정학 이벤트급)"
+            state = f"위험 {'확대' if chg > 0 else '완화'}"
+            threshold_note = f"일변동 {abs_chg:.1f}% — 충격급"
+            risk_grade = f"{state} — 유가 {trend} ({threshold_note}, 상위 3%, OPEC/지정학 이벤트급)"
             s1 = f"▸ ${val+5:.0f} 돌파 → {'인플레 재점화, 금리 인상 기대 강화' if chg > 0 else '산유국 감산 대응, 반등 가능'}"
             s2 = f"▸ ${val-10:.0f} 복귀 → 이벤트 소화 후 되돌림 (3-5일)"
             s3 = f"▸ $120+ → 경기침체 우려 본격화" if chg > 0 else f"▸ $80 이하 → 에너지주 구조적 하락"
-            short_action = f"{'에너지 ETF 단기 매수 가능. 추격 매수 금지' if chg > 0 else '항공/해운주 반등 매수 검토. 에너지주 매수 보류'}"
-            mid_action = f"{'유가 $100 이상 유지 시 인플레 자산 비중 축소' if chg > 0 else '유가 $85 안정 확인 후 에너지주 분할 매수'}"
+            current_scenario = 1
+            short_action = "에너지 ETF 단기 매수 가능. 추격 매수 금지" if chg > 0 else "항공/해운주 반등 매수 검토. 에너지주 매수 보류"
+            mid_action = "유가 $100 이상 유지 시 인플레 자산 비중 축소" if chg > 0 else "유가 $85 안정 확인 후 에너지주 분할 매수"
+            short_condition = f"추가 {direction_ko} 지속 시 {'추격 매수 금지' if chg > 0 else '항공주 진입 확대'}, 되돌림 시 축소"
+            mid_condition = "3-5일 내 평균 회귀 여부로 구조적 vs 일시적 판단"
         elif abs_chg >= 5:
-            risk_grade = f"상위 15% 수준 (일변동 {abs_chg:.1f}%, 주의 구간)"
+            state = f"경계 {'상승' if chg > 0 else '완화'}"
+            threshold_note = f"일변동 {abs_chg:.1f}% — 주의 구간"
+            risk_grade = f"{state} — 유가 {trend} ({threshold_note}, 상위 15%)"
             s1 = f"▸ ${val+5:.0f} 이상 → {'상승 모멘텀 지속' if chg > 0 else '추가 하락 모멘텀'}"
             s2 = f"▸ ${val-5:.0f} 이하 → 평균 회귀 (1주 이내)"
-            s3 = f"▸ OPEC 회의/재고 데이터에 민감 — 이벤트 전 관망"
+            s3 = "▸ OPEC 회의/재고 데이터에 민감 — 이벤트 전 관망"
+            current_scenario = 1 if abs_chg >= 6 else 3
             short_action = f"에너지 관련 종목 단기 대응. 추격 {'매수' if chg > 0 else '매도'} 금지"
             mid_action = "유가 방향 확인 후 포지션 조정"
+            short_condition = f"당일 추가 {direction_ko} 3%+ 시 리스크 확대 판정"
+            mid_condition = "1주 내 평균 회귀 실패 시 구조적 추세로 전환 판단"
         else:
-            risk_grade = "정상 범위"
+            state = "안정 유지" if abs_chg < 2 else f"미세 {'상승' if chg > 0 else '하락'}"
+            threshold_note = "정상 범위"
+            risk_grade = f"{state} — 유가 {trend} ({threshold_note})"
             s1 = f"▸ ${val+10:.0f} 돌파 → 인플레 우려 부각"
             s2 = f"▸ ${val-10:.0f} 하회 → 에너지주 하방 압력"
-            s3 = f"▸ 현 수준 유지 → 에너지 섹터 중립"
+            s3 = "▸ 현 수준 유지 → 에너지 섹터 중립"
+            current_scenario = 3
             short_action = "현 전략 유지"
             mid_action = "현 전략 유지"
+            short_condition = "일변동 5%+ 발생 시 경계 구간 재판정"
+            mid_condition = "$10 이상 추세 이동 시 섹터 비중 조정"
+        market_impact = "유가 상승은 에너지주·인플레 자산↑·항공/운송주 부담, 하락은 반대"
 
     elif ticker == "^TNX":
         if val >= 5.0:
-            risk_grade = "상위 1% 수준 (2007년 이후 최고, 밸류에이션 압박)"
+            state = "위험 확대" if chg > 1 else ("위험 완화" if chg < -1 else "위험 유지")
+            threshold_note = "5.0% 상회 — 2007년 이후 최고"
+            risk_grade = f"{state} — 금리 {trend} ({threshold_note}, 밸류에이션 압박)"
             s1 = f"▸ {val+0.3:.1f}% 돌파 → 성장주 추가 하락, 부동산 직격"
-            s2 = f"▸ 4.5% 하회 → Fed 개입 기대, 1-2개월 내 안정"
-            s3 = f"▸ 5.5%+ 장기 체류 → 재정적자 우려, 구조적 고금리"
+            s2 = "▸ 4.5% 하회 → Fed 개입 기대, 1-2개월 내 안정"
+            s3 = "▸ 5.5%+ 장기 체류 → 재정적자 우려, 구조적 고금리"
+            current_scenario = 1 if chg > 0 else (2 if chg < -0.5 else 3)
             short_action = "성장주/기술주 비중 즉시 축소. 단기채/현금 확대"
             mid_action = "4.5% 하회 확인 시 장기채 매수 기회 탐색"
+            short_condition = "5.5% 돌파 시 축소 폭 확대, 4.7% 하회 시 완화"
+            mid_condition = "4.5% 안정 2주 확인 후 장기채·성장주 분할 매수"
         else:
-            risk_grade = f"상위 30% 수준 (금리 변동 구간)"
+            state = "경계 상승" if chg > 1 else ("경계 완화" if chg < -1 else "경계 유지")
+            threshold_note = "5.0% 접근 중" if (val >= 4.7 and chg > 0) else "금리 변동 구간"
+            risk_grade = f"{state} — 금리 {trend} ({threshold_note}, 상위 30%)"
             s1 = f"▸ {val+0.2:.1f}% 이상 → 성장주 밸류에이션 하방 압력"
             s2 = f"▸ {val-0.3:.1f}% 이하 → 금리 안정, 성장주 반등"
-            s3 = f"▸ CPI/고용 발표일 전후 변동성 확대 예상"
+            s3 = "▸ CPI/고용 발표일 전후 변동성 확대 예상"
+            current_scenario = 1 if chg > 1 else (2 if chg < -1 else 3)
             short_action = "금리 민감 섹터(부동산, 유틸리티) 매수 보류"
             mid_action = "듀레이션 중립 유지. Fed 발언 모니터링"
+            short_condition = "5.0% 돌파 시 방어 강화, 4.2% 하회 시 성장주 복귀"
+            mid_condition = "CPI/고용 발표 전후 변동성 확인 후 듀레이션 조정"
+        market_impact = "10년물 금리는 성장주 밸류에이션과 역상관. 상승은 기술주·리츠·부동산 하방"
 
     elif ticker == "KR_CPI":
         if val >= 3.0:
-            risk_grade = "상위 15% 수준 (물가 3%+ — 금리 인하 지연 가능)"
+            state = "위험 확대" if chg > 0.1 else ("위험 완화" if chg < -0.1 else "위험 유지")
+            threshold_note = "3.0%+ 재부각"
+            risk_grade = f"{state} — 물가 {trend} ({threshold_note}, 금리 인하 지연)"
             s1 = f"▸ CPI {val+0.5:.1f}%+ → 한은 금리 동결 장기화"
-            s2 = f"▸ CPI 2.5% 하회 → 금리 인하 기대 형성"
-            s3 = f"▸ 스태그플레이션 경계: 수출 감소 + 고물가 병존 시 리스크 확대"
+            s2 = "▸ CPI 2.5% 하회 → 금리 인하 기대 형성"
+            s3 = "▸ 스태그플레이션 경계: 수출 감소 + 고물가 병존 시 리스크 확대"
+            current_scenario = 1 if chg > 0 else (2 if chg < -0.1 else 3)
             short_action = "금리 민감주(부동산, 건설) 매수 보류"
             mid_action = "물가 안정 확인 후 금리 인하 수혜주 분할 매수"
+            short_condition = "CPI 3.5% 돌파 시 방어 확대, 2.7% 하회 시 완화"
+            mid_condition = "2개월 연속 2.5% 하회 시 인하 수혜주 본격 매수"
         else:
-            risk_grade = "정상 범위 (물가 안정)"
-            s1 = f"▸ CPI 2.5% 이상 → 물가 부담 재부각"
-            s2 = f"▸ CPI 1.5% 이하 → 디플레 우려, 경기 둔화 신호"
-            s3 = f"▸ 현 수준 유지 → 금리 인하 여건 형성"
+            state = "경계 접근" if (val >= 2.5 and chg > 0.1) else ("안정 강화" if chg < -0.1 else "안정 유지")
+            threshold_note = "3.0% 접근 중" if (val >= 2.7 and chg > 0) else "정상 범위"
+            risk_grade = f"{state} — 물가 {trend} ({threshold_note})"
+            s1 = "▸ CPI 2.5% 이상 → 물가 부담 재부각"
+            s2 = "▸ CPI 1.5% 이하 → 디플레 우려, 경기 둔화 신호"
+            s3 = "▸ 현 수준 유지 → 금리 인하 여건 형성"
+            current_scenario = 1 if (val >= 2.5 or chg > 0.1) else (2 if val < 1.5 else 3)
             short_action = "정상 매매 가능"
             mid_action = "금리 인하 수혜주(성장주, 리츠) 관심"
+            short_condition = "2.5% 재돌파 시 방어 전환, 1.5% 하회 시 경기방어주 강화"
+            mid_condition = "인하 시그널 확인 후 리츠·성장주 비중 확대"
+        market_impact = "CPI는 한은 금리 경로 핵심 변수. 3%+ 시 인하 지연, 2%대 안착 시 완화 기대"
 
     elif ticker == "KR_BASE_RATE":
-        risk_grade = f"기준금리 {val}% ({'고금리' if val >= 3.0 else '저금리'} 구간)"
+        level_tag = "고금리" if val >= 3.0 else "저금리"
+        direction_tag = "인상" if chg > 0.01 else ("인하" if chg < -0.01 else "동결")
+        state = f"{direction_tag} {'진행' if direction_tag != '동결' else '지속'}"
+        risk_grade = f"{state} — 기준금리 {val}% ({level_tag} 구간, 전기 대비 {chg:+.2f}%p)"
         s1 = f"▸ {val+0.25:.2f}% 인상 → 대출 부담 확대, 부동산 하방 압력"
         s2 = f"▸ {val-0.25:.2f}% 인하 → 성장주/리츠 수혜, 소비 회복 기대"
-        s3 = f"▸ 동결 지속 → 시장 방향성 부재, 종목 선별 장세"
-        short_action = f"{'고금리 수혜주(은행, 보험) 관심' if val >= 3.0 else '금리 인하 수혜주(기술, 리츠) 관심'}"
+        s3 = "▸ 동결 지속 → 시장 방향성 부재, 종목 선별 장세"
+        current_scenario = 1 if chg > 0.01 else (2 if chg < -0.01 else 3)
+        short_action = ("고금리 수혜주(은행, 보험) 관심" if val >= 3.0 else "금리 인하 수혜주(기술, 리츠) 관심")
         mid_action = "한은 통화정책방향 회의(분기 1회) 전후 포지션 점검"
+        short_condition = "다음 회의 전 CPI·수출 지표 방향으로 인하 시점 선제 반영"
+        mid_condition = "2회 연속 동일 방향 시 섹터 회전 본격화"
+        market_impact = "기준금리는 시장 전반 할인율. 인상은 성장주·부동산↓, 인하는 리츠·기술주↑"
 
     elif ticker == "KR_EXPORT":
         if val >= 10:
-            risk_grade = "호조 (수출 증가율 10%+ — 경기 회복 신호)"
+            state = "호조 강화" if chg > 0 else ("호조 유지" if chg > -3 else "호조 둔화")
+            risk_grade = f"{state} — 수출 {trend} (경기 회복 신호, 전기 대비 {chg:+.1f}%)"
             s1 = f"▸ 수출 {val+5:.0f}%+ → 반도체 중심 수출 호황 지속"
-            s2 = f"▸ 수출 0% 하회 → 글로벌 수요 둔화 전환"
-            s3 = f"▸ 환율 강세 전환 시 수출 채산성 약화 주의"
+            s2 = "▸ 수출 0% 하회 → 글로벌 수요 둔화 전환"
+            s3 = "▸ 환율 강세 전환 시 수출 채산성 약화 주의"
+            current_scenario = 1 if chg >= 0 else (2 if chg < -5 else 3)
             short_action = "수출주(반도체, 자동차, 배터리) 비중 확대"
             mid_action = "수출 둔화 신호 시 내수주로 전환 준비"
+            short_condition = "다음 발표 5% 하회 전환 시 수출주 비중 축소"
+            mid_condition = "2개월 연속 둔화 시 내수주·방어주로 회전"
         elif val < 0:
-            risk_grade = f"부진 (수출 {val:.1f}% 감소 — 경기 하강 신호)"
+            state = "부진 심화" if chg < 0 else ("부진 유지" if chg < 3 else "부진 완화")
+            risk_grade = f"{state} — 수출 {trend} (경기 하강 신호, 전기 대비 {chg:+.1f}%)"
             s1 = f"▸ 수출 {val-5:.0f}% 이하 → 수출주 실적 악화 본격화"
-            s2 = f"▸ 수출 0% 회복 → 바닥 확인 신호"
-            s3 = f"▸ 원화 약세가 수출 채산성 부분 보완"
+            s2 = "▸ 수출 0% 회복 → 바닥 확인 신호"
+            s3 = "▸ 원화 약세가 수출 채산성 부분 보완"
+            current_scenario = 1 if chg < 0 else (2 if chg > 3 else 3)
             short_action = "수출주 신규 매수 보류. 방어주(통신, 유틸) 관심"
             mid_action = "수출 반등 확인 후 수출주 분할 매수"
+            short_condition = "추가 마이너스 확대 시 방어주 비중 강화"
+            mid_condition = "0% 회복 확인 후 반도체·자동차 분할 매수"
         else:
-            risk_grade = "보통 (수출 완만한 회복)"
-            s1 = f"▸ ��출 10%+ → 본격 회복 진입"
-            s2 = f"▸ 수출 마이너스 전환 → 경기 둔화"
-            s3 = f"▸ 품목별 편차 확인 필요 (반도체 vs 일반 제조)"
+            state = "회복 진행" if chg > 0 else ("회복 정체" if chg > -3 else "회복 둔화")
+            risk_grade = f"{state} — 수출 {trend} (완만한 회복, 전기 대비 {chg:+.1f}%)"
+            s1 = "▸ 수출 10%+ → 본격 회복 진입"
+            s2 = "▸ 수출 마이너스 전환 → 경기 둔화"
+            s3 = "▸ 품목별 편차 확인 필요 (반도체 vs 일반 제조)"
+            current_scenario = 1 if chg > 3 else (2 if chg < -3 else 3)
             short_action = "수출주 선별적 접근"
             mid_action = "반도체 수출 데이터 별도 모니터링"
+            short_condition = "10% 돌파 시 수출주 확대, 0% 이탈 시 축소"
+            mid_condition = "반도체 품목 증가율 기준으로 회전 방향 결정"
+        market_impact = "한국 수출은 경기 선행지표. 반도체 비중 높아 코스피와 동행성 강함"
 
     else:
-        risk_grade = f"{indicator.name} 변동 관찰 필요"
+        state = "관찰 필요"
+        risk_grade = f"{state} — {indicator.name} {trend} ({chg:+.1f}%)"
         s1 = f"▸ {indicator.name} {'상승' if chg > 0 else '하락'} 추세 확인 필요"
-        s2 = f"▸ 추세 지속 여부 1-2일 관���"
-        s3 = f"▸ 관련 이벤트 발생 시 변동 확대 가능"
-        short_action = "관련 섹터 모니���링. 신규 진입 보류"
-        mid_action = "��세 확인 후 판단"
+        s2 = "▸ 추세 지속 여부 1-2일 관찰"
+        s3 = "▸ 관련 이벤트 발생 시 변동 확대 가능"
+        current_scenario = 1 if abs(chg) > 3 else 3
+        short_action = "관련 섹터 모니터링. 신규 진입 보류"
+        mid_action = "추세 확인 후 판단"
+        short_condition = "추가 변동 발생 시 경계 구간 재판정"
+        mid_condition = "1주 이상 추세 지속 시 섹터 전략 조정"
+        market_impact = f"{indicator.name} 변동은 관련 섹터 수급·심리에 영향"
+
+    # 현재 근접 시나리오 하이라이트 (기존 텍스트 유지, 앞에 [현재 근접] 마커만 추가)
+    scenarios = [s1, s2, s3]
+    if 1 <= current_scenario <= 3:
+        i = current_scenario - 1
+        scenarios[i] = scenarios[i].replace(
+            "▸ ",
+            '▸ <strong style="color:#0f172a;">[현재 근접]</strong> ',
+            1,
+        )
+    scenarios_html = "<br>".join(scenarios)
 
     return f"""
         <div style="border:1px solid #e2e8f0; border-radius:8px; margin:16px 0; overflow:hidden;">
           <div style="background:#f1f5f9; padding:12px 14px; font-weight:bold; font-size:14px; border-bottom:1px solid #e2e8f0;">
             📋 정량 평가
           </div>
-          <div style="padding:14px; font-size:13px;">
-            <span style="color:#334155; font-weight:bold;">위험도:</span> {risk_grade}
+          <div style="padding:14px; font-size:13px; line-height:1.7;">
+            <span style="color:#334155; font-weight:bold;">위험도:</span> {risk_grade}<br>
+            <span style="color:#334155; font-weight:bold;">시장 영향:</span> {market_impact}
           </div>
         </div>
 
@@ -515,7 +638,7 @@ def _build_indicator_assessment(indicator) -> str:
             🔮 시나리오
           </div>
           <div style="padding:14px; font-size:13px; line-height:1.8;">
-            {s1}<br>{s2}<br>{s3}
+            {scenarios_html}
           </div>
         </div>
 
@@ -527,10 +650,12 @@ def _build_indicator_assessment(indicator) -> str:
             <div style="margin-bottom:8px;">
               <span style="background:#dbeafe; padding:2px 8px; border-radius:3px; font-weight:bold; font-size:12px;">단기</span>
               &nbsp;{short_action}
+              <span style="color:#64748b; font-size:12px;"> · 조건: {short_condition}</span>
             </div>
             <div>
               <span style="background:#ede9fe; padding:2px 8px; border-radius:3px; font-weight:bold; font-size:12px;">중기</span>
               &nbsp;{mid_action}
+              <span style="color:#64748b; font-size:12px;"> · 조건: {mid_condition}</span>
             </div>
           </div>
         </div>"""

@@ -10,6 +10,7 @@ from typing import List
 
 import config as cfg
 from models.news_item import NewsItem
+from analyzers.event_actions import compute_impact_boost
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +153,15 @@ def score_impact(items: List[NewsItem]) -> List[NewsItem]:
 
         item.impact_score = round(min(10.0, base_score * geo_mult * source_mult * freshness_mult), 1)
 
+        # 이벤트 Fallback 추가 부스트 (단기안) — geo_mult 위에 가산
+        # shipping_lane+봉쇄/공급차질/공격 = +2.5, 그 외 fallback 성립 = +1.5
+        event_boost = compute_impact_boost(
+            getattr(item, "event_entity_class", None),
+            getattr(item, "event_category", None),
+        ) if getattr(item, "event_fallback", False) else 0.0
+        if event_boost > 0:
+            item.impact_score = round(min(10.0, item.impact_score + event_boost), 1)
+
         item.score_breakdown = {
             "urgency": item.urgency,
             "scope": item.scope,
@@ -160,6 +170,7 @@ def score_impact(items: List[NewsItem]) -> List[NewsItem]:
             "geo_mult": geo_mult,
             "source_mult": source_mult,
             "freshness_mult": freshness_mult,
+            "event_boost": event_boost,
         }
 
     # 임계값 필터

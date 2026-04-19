@@ -15,6 +15,11 @@ from enum import IntEnum
 from typing import Optional
 
 from models.news_item import NewsItem
+from analyzers.event_actions import (
+    detect_action_category,
+    detect_entity_class,
+    resolve_event_level,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +132,22 @@ def classify_geopolitical(item: NewsItem) -> Optional[GeopoliticalAssessment]:
         if hits >= 1:
             detected_level = level
             break
+
+    # Fallback: 기존 에스컬레이션 키워드 miss 시 (엔티티 × 액션) 매트릭스로 provisional 승격
+    # 목적: 'Hormuz stays shut', 'Closed Strait'처럼 정확한 봉쇄 키워드가 없어도
+    #       해상로+봉쇄/공급차질 조합이면 L3로 자동 판정.
+    if detected_level is None:
+        entity_class = detect_entity_class(text)
+        action = detect_action_category(text)
+        if entity_class and action:
+            provisional = resolve_event_level(entity_class, action)
+            detected_level = EscalationLevel(provisional)
+            item.event_fallback = True
+            item.event_category = action
+            item.event_entity_class = entity_class
+            logger.info(
+                f"[지정학-Fallback] L{provisional} ({entity_class}+{action}): {item.title[:50]}"
+            )
 
     if detected_level is None:
         return None

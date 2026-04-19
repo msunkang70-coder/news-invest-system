@@ -95,6 +95,11 @@ class NewsItem:
     geo_region: str = ""
     geo_conflict_type: str = ""
 
+    # 이벤트 Fallback (단기안 — 키워드 사전 miss 시 엔티티×액션 매트릭스로 승격)
+    event_fallback: bool = False
+    event_category: Optional[str] = None        # ACTION_CATEGORIES 중 하나
+    event_entity_class: Optional[str] = None    # ENTITY_CLASSES 중 하나
+
     # 메타
     collected_at: datetime = field(default_factory=datetime.utcnow)
 

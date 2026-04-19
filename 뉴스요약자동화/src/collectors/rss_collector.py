@@ -65,19 +65,26 @@ def _parse_single_feed(source: dict) -> List[NewsItem]:
 
 
 def collect_rss_feeds(sources: str = "all") -> List[NewsItem]:
-    """RSS 피드 수집 — 뉴스 + 지정학 + 한국어 Google News"""
+    """RSS 피드 수집 — 뉴스 + 지정학 + 한국어 Google News + 키워드 쿼리 + 핫스팟"""
     feeds = []
     if sources in ("all", "kr"):
         feeds.extend(cfg.RSS_SOURCES_KR)
+        # 한국어 Google News (종목/섹터별 심화 수집)
+        feeds.extend(getattr(cfg, "GOOGLE_NEWS_QUERIES_KR", []))
+
     if sources in ("all", "global"):
         feeds.extend(cfg.RSS_SOURCES_GLOBAL)
+        # 단기안: 이전에는 정의만 되고 미연결 상태였던 쿼리들을 실제 파이프라인에 연결
+        feeds.extend(getattr(cfg, "GOOGLE_NEWS_QUERIES", []))
+        # 확장 준비: AP/BBC/Al Jazeera 등 직접 RSS (기본 OFF, ENABLE_EXTENDED_GLOBAL로 제어)
+        if getattr(cfg, "ENABLE_EXTENDED_GLOBAL", False):
+            feeds.extend(getattr(cfg, "RSS_SOURCES_GLOBAL_DIRECT", []))
+
     if sources in ("all", "geopolitical"):
         feeds.extend(cfg.RSS_SOURCES_GEOPOLITICAL)
-
-    # 한국어 Google News (종목/섹터별 심화 수집)
-    if sources in ("all", "kr"):
-        for gn in getattr(cfg, "GOOGLE_NEWS_QUERIES_KR", []):
-            feeds.append(gn)
+        feeds.extend(getattr(cfg, "GOOGLE_NEWS_QUERIES_GEOPOLITICAL", []))
+        # 단기안 신규: 지정학 핫스팟 (호르무즈·해상봉쇄·이란·대만·북한 등 전담)
+        feeds.extend(getattr(cfg, "GOOGLE_NEWS_QUERIES_HOTSPOT", []))
 
     all_items = []
     for source in feeds:

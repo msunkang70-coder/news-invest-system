@@ -169,3 +169,62 @@
 | 이메일 발송 | 발송/실패 로그 | 실패 3회 연속 → 관리자 알림 |
 | 디스크 | data/ 폴더 사이즈 | > 5GB → 오래된 캐시 정리 |
 | 스케줄러 | APScheduler job 상태 | 미스된 job 감지 |
+
+---
+
+## 8. 이벤트 Fallback 레이어 (2026-04-18 Phase 6)
+
+키워드 사전 의존도를 낮추기 위한 2단 구조. 기존 `geopolitical_classifier` 내부에 삽입.
+
+```
+[수집] → [keyword_filter] → [geopolitical_classifier]
+                                 │
+                                 ├── 에스컬레이션 키워드 hit → L1~L5 확정
+                                 │
+                                 └── miss (기존엔 여기서 탈락)
+                                     ▼
+                                 [event_actions.py fallback]
+                                 엔티티 클래스 × 액션 카테고리 매트릭스
+                                 - shipping_lane × blockade → L3 + impact +2.5
+                                 - strategic_geography × attack → L3
+                                 - commodity × supply_disruption → L3
+                                 - institution × policy_shock → L3
+                                 - … 기타 조합 → L1~L2
+                                     ▼
+                             item.event_fallback=True
+                             item.event_category / event_entity_class 기록
+                                     ▼
+                             [impact_scorer] geo_mult × + event_boost +
+                                     ▼
+                             [alert_engine] NEWS_RULE_PRIORITY:
+                             지정학_L4 > L3 > 긴급속보 > 이벤트후보 > 관심종목 > 경제지표 > 고영향뉴스
+                                     ▼
+                             매칭 無 + impact≥5.0 → data/missed_events.json 롤링 기록
+```
+
+### 엔티티 클래스 (5종, 민감도 순)
+`shipping_lane` → `strategic_geography` → `commodity` → `institution` → `major_corporate`
+
+### 액션 카테고리 (7종)
+`blockade` · `supply_disruption` · `attack` · `sanction` · `official_warning` · `policy_shock` · `major_incident`
+
+### 데이터 모델 / 영속화
+- `models/news_item.py`: `event_fallback`, `event_category`, `event_entity_class` 필드 추가
+- `utils/db.py`: `news_items` 테이블에 동일 3개 컬럼 ALTER 자동 마이그레이션 (기동 시)
+- `data/missed_events.json`: 누락 이벤트 롤링(상한 2000건) — 중기안(event_type_classifier) 학습 입력
+
+### 수집 소스 아키텍처 업데이트
+- `GOOGLE_NEWS_QUERIES` + `GOOGLE_NEWS_QUERIES_GEOPOLITICAL` dead code 활성화 (rss_collector 연결)
+- `GOOGLE_NEWS_QUERIES_HOTSPOT` 8종 신규 — 호르무즈·해상봉쇄·수에즈·이란·대만·북한·우크라이나·홍해
+- `geopolitical_fast` 잡 — 24/7 5분 간격 (main 잡과 2분 오프셋, ID `geopolitical_fast`)
+- `MAX_ARTICLES_PER_FEED` 30 → 100
+- `RSS_SOURCES_GLOBAL_DIRECT` 11개 준비 (AP/BBC/AJ/Guardian/Reuters/NYT) — `ENABLE_EXTENDED_GLOBAL` 플래그 OFF 상태
+
+### 대시보드 추가
+- `🔔 놓친 이벤트` 탭 — `missed_events.json` 읽어 metrics 3종(누락 수·fallback 매칭·평균 impact) + 테이블
+- 환율 중복(FDR 실시간 vs ECOS 공시)은 UI에서 `KRW/USD_ECOS` 숨김 처리 (`_UI_HIDDEN_TICKERS`)
+- KPI 상단 슬롯 8 → 12개로 확대
+
+### 자동 시작 (Task Scheduler 이관)
+- `NIAS_Scheduler` 작업 — 로그온 트리거 + 5분 keep-alive + 실패 시 1분 후 3회 재시도
+- 기존 Windows Startup 폴더 방식(`NIAS_AutoStart.lnk`)은 Update 강제 재부팅 후 복구 실패로 2026-04-18 폐기

@@ -38,8 +38,12 @@ KIS_APP_SECRET = os.environ.get("KIS_APP_SECRET", "")
 
 # ─────────────────────────── 수집 설정 ───────────────────────────
 REQUEST_TIMEOUT = 15
-MAX_ARTICLES_PER_FEED = 30
+MAX_ARTICLES_PER_FEED = 100  # 단기안: 30 → 100 (공백·급등 이벤트 시 밀림 완화)
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) NIAS/2.0"
+
+# Google News RSS URL 빌더 — 한 곳에서 관리
+_GN_EN = "https://news.google.com/rss/search?q={q}&hl=en-US&gl=US&ceid=US:en"
+_GN_KR = "https://news.google.com/rss/search?q={q}&hl=ko&gl=KR&ceid=KR:ko"
 
 # ─────────────────────────── RSS 소스 ───────────────────────────
 RSS_SOURCES_KR = [
@@ -50,13 +54,14 @@ RSS_SOURCES_KR = [
     {"name": "SBS Biz", "url": "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=01&plink=RSSREADER", "region": "KR"},
 ]
 
+# 단기안: Reuters/Bloomberg/WSJ/FT 쿼리에서 카테고리 제한 완화 (breaking/world 포함)
 RSS_SOURCES_GLOBAL = [
-    {"name": "Reuters World", "url": "https://news.google.com/rss/search?q=site:reuters.com+business+OR+markets&hl=en-US&gl=US&ceid=US:en", "region": "GLOBAL"},
+    {"name": "Reuters World", "url": _GN_EN.format(q="site:reuters.com+(breaking+OR+world+OR+markets+OR+business)"), "region": "GLOBAL"},
     {"name": "CNBC Top News", "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114", "region": "GLOBAL"},
     {"name": "Investing.com", "url": "https://www.investing.com/rss/news.rss", "region": "GLOBAL"},
-    {"name": "Bloomberg via GN", "url": "https://news.google.com/rss/search?q=site:bloomberg.com+markets&hl=en-US&gl=US&ceid=US:en", "region": "GLOBAL"},
-    {"name": "WSJ via GN", "url": "https://news.google.com/rss/search?q=site:wsj.com+markets+economy&hl=en-US&gl=US&ceid=US:en", "region": "GLOBAL"},
-    {"name": "FT via GN", "url": "https://news.google.com/rss/search?q=site:ft.com+markets+economy&hl=en-US&gl=US&ceid=US:en", "region": "GLOBAL"},
+    {"name": "Bloomberg via GN", "url": _GN_EN.format(q="site:bloomberg.com+(breaking+OR+world+OR+markets+OR+economy)"), "region": "GLOBAL"},
+    {"name": "WSJ via GN", "url": _GN_EN.format(q="site:wsj.com+(breaking+OR+world+OR+markets+OR+economy)"), "region": "GLOBAL"},
+    {"name": "FT via GN", "url": _GN_EN.format(q="site:ft.com+(breaking+OR+world+OR+markets+OR+economy)"), "region": "GLOBAL"},
 ]
 
 RSS_SOURCES_GEOPOLITICAL = [
@@ -66,19 +71,32 @@ RSS_SOURCES_GEOPOLITICAL = [
     {"name": "38 North", "url": "https://www.38north.org/feed/", "region": "GLOBAL"},
 ]
 
+# 단기안: GOOGLE_NEWS_QUERIES를 feed-호환 구조로 정규화 (query → url) → rss_collector가 소비
 GOOGLE_NEWS_QUERIES = [
-    {"name": "GN - 반도체", "query": "semiconductor chip market stock", "region": "GLOBAL"},
-    {"name": "GN - AI", "query": "artificial intelligence stock market", "region": "GLOBAL"},
-    {"name": "GN - 금리", "query": "interest rate FOMC federal reserve", "region": "GLOBAL"},
-    {"name": "GN - 유가", "query": "oil price crude OPEC", "region": "GLOBAL"},
-    {"name": "GN - 한국경제", "query": "South Korea economy export", "region": "GLOBAL"},
-    {"name": "GN - 관세", "query": "tariff trade war", "region": "GLOBAL"},
+    {"name": "GN - 반도체", "url": _GN_EN.format(q="semiconductor+chip+market+stock"), "region": "GLOBAL"},
+    {"name": "GN - AI", "url": _GN_EN.format(q="artificial+intelligence+stock+market"), "region": "GLOBAL"},
+    {"name": "GN - 금리", "url": _GN_EN.format(q="interest+rate+FOMC+federal+reserve"), "region": "GLOBAL"},
+    {"name": "GN - 유가", "url": _GN_EN.format(q="oil+price+crude+OPEC"), "region": "GLOBAL"},
+    {"name": "GN - 한국경제", "url": _GN_EN.format(q="South+Korea+economy+export"), "region": "GLOBAL"},
+    {"name": "GN - 관세", "url": _GN_EN.format(q="tariff+trade+war"), "region": "GLOBAL"},
 ]
 
 GOOGLE_NEWS_QUERIES_GEOPOLITICAL = [
-    {"name": "GN - 전쟁/분쟁", "query": "war conflict military escalation", "region": "GLOBAL"},
-    {"name": "GN - 제재", "query": "sanctions embargo geopolitical risk", "region": "GLOBAL"},
-    {"name": "GN - 대만/중국", "query": "Taiwan strait China military", "region": "GLOBAL"},
+    {"name": "GN - 전쟁/분쟁", "url": _GN_EN.format(q="war+conflict+military+escalation"), "region": "GLOBAL"},
+    {"name": "GN - 제재", "url": _GN_EN.format(q="sanctions+embargo+geopolitical+risk"), "region": "GLOBAL"},
+    {"name": "GN - 대만/중국", "url": _GN_EN.format(q="Taiwan+strait+China+military"), "region": "GLOBAL"},
+]
+
+# 단기안 신규: 지정학 핫스팟 전용 쿼리 — 해상로·봉쇄·이란·대만·북한 breaking 전담
+GOOGLE_NEWS_QUERIES_HOTSPOT = [
+    {"name": "GN - 호르무즈", "url": _GN_EN.format(q="%22Strait+of+Hormuz%22+(closure+OR+shut+OR+blockade+OR+navy+OR+closed)"), "region": "GLOBAL"},
+    {"name": "GN - 해상봉쇄", "url": _GN_EN.format(q="(%22naval+blockade%22+OR+%22strait+closure%22+OR+%22shipping+halted%22+OR+%22shipping+disruption%22)"), "region": "GLOBAL"},
+    {"name": "GN - 수에즈", "url": _GN_EN.format(q="%22Suez+Canal%22+(closure+OR+attack+OR+Houthi+OR+blocked)"), "region": "GLOBAL"},
+    {"name": "GN - 이란 긴장", "url": _GN_EN.format(q="Iran+(navy+OR+missile+OR+strike+OR+retaliation+OR+attack+OR+nuclear)"), "region": "GLOBAL"},
+    {"name": "GN - 대만해협", "url": _GN_EN.format(q="%22Taiwan+Strait%22+(military+OR+exercise+OR+incursion+OR+PLA)"), "region": "GLOBAL"},
+    {"name": "GN - 북한 도발", "url": _GN_EN.format(q="(%22North+Korea%22+OR+Pyongyang)+(missile+OR+nuclear+OR+ICBM+OR+test)"), "region": "GLOBAL"},
+    {"name": "GN - 우크라이나", "url": _GN_EN.format(q="Ukraine+(strike+OR+offensive+OR+missile+OR+escalation)"), "region": "GLOBAL"},
+    {"name": "GN - 홍해/바벨만데브", "url": _GN_EN.format(q="(%22Red+Sea%22+OR+%22Bab+el-Mandeb%22)+(Houthi+OR+attack+OR+shipping)"), "region": "GLOBAL"},
 ]
 
 # 종목/섹터별 Google News (한국어) — RSS 누락 보완
@@ -88,6 +106,26 @@ GOOGLE_NEWS_QUERIES_KR = [
     {"name": "GN-KR 코스피", "url": "https://news.google.com/rss/search?q=코스피+증시+주식시장&hl=ko&gl=KR&ceid=KR:ko", "region": "KR"},
     {"name": "GN-KR 금리환율", "url": "https://news.google.com/rss/search?q=기준금리+환율+원달러&hl=ko&gl=KR&ceid=KR:ko", "region": "KR"},
     {"name": "GN-KR 유가에너지", "url": "https://news.google.com/rss/search?q=유가+에너지+OPEC&hl=ko&gl=KR&ceid=KR:ko", "region": "KR"},
+]
+
+# ─────────────────────────── 확장 준비: 해외 직접 RSS ───────────────────────────
+# 사용법: ENABLE_EXTENDED_GLOBAL = True 로 바꾸면 아래 피드들이 수집에 즉시 포함됨.
+# - AP News, BBC World, Al Jazeera, Guardian, Reuters 직접 피드
+# - 2026-04-19 활성화 — 단기안 검증 완료 후
+ENABLE_EXTENDED_GLOBAL = True
+
+RSS_SOURCES_GLOBAL_DIRECT = [
+    # AP는 직접 RSS 피드 중단(feeds.apnews.com 폐쇄) → Google News site: 필터로 대체
+    {"name": "AP via GN", "url": _GN_EN.format(q="site:apnews.com+(breaking+OR+world+OR+business+OR+politics)"), "region": "GLOBAL"},
+    {"name": "BBC World", "url": "https://feeds.bbci.co.uk/news/world/rss.xml", "region": "GLOBAL"},
+    {"name": "BBC Business", "url": "https://feeds.bbci.co.uk/news/business/rss.xml", "region": "GLOBAL"},
+    {"name": "Al Jazeera", "url": "https://www.aljazeera.com/xml/rss/all.xml", "region": "GLOBAL"},
+    {"name": "Guardian World", "url": "https://www.theguardian.com/world/rss", "region": "GLOBAL"},
+    {"name": "Guardian Business", "url": "https://www.theguardian.com/business/rss", "region": "GLOBAL"},
+    # Reuters 직접 피드는 간헐적 응답 — 유지하되 주 수집은 Google News 경유 RSS_SOURCES_GLOBAL 쪽이 담당
+    {"name": "Reuters Top News", "url": "https://feeds.reuters.com/reuters/topNews", "region": "GLOBAL"},
+    {"name": "Reuters World Direct", "url": "https://feeds.reuters.com/Reuters/worldNews", "region": "GLOBAL"},
+    {"name": "NYT World", "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", "region": "GLOBAL"},
 ]
 
 # ─────────────────────────── 키워드 필터 ───────────────────────────

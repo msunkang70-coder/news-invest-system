@@ -61,7 +61,10 @@ def init_db():
             geo_level INTEGER,
             geo_region TEXT,
             geo_conflict_type TEXT,
-            score_breakdown TEXT
+            score_breakdown TEXT,
+            event_fallback INTEGER DEFAULT 0,
+            event_category TEXT,
+            event_entity_class TEXT
         );
 
         CREATE INDEX IF NOT EXISTS idx_news_published ON news_items(published_time);
@@ -94,6 +97,25 @@ def init_db():
             sent_at TEXT DEFAULT (datetime('now','localtime'))
         );
     """)
+    # 기존 DB에 신규 컬럼 마이그레이션 (ALTER TABLE, 중복 오류는 무시)
+    for col_def in (
+        "event_fallback INTEGER DEFAULT 0",
+        "event_category TEXT",
+        "event_entity_class TEXT",
+    ):
+        col_name = col_def.split()[0]
+        try:
+            conn.execute(f"ALTER TABLE news_items ADD COLUMN {col_def}")
+            logger.info(f"[DB] 컬럼 추가: news_items.{col_name}")
+        except sqlite3.OperationalError:
+            pass  # 이미 존재
+
+    # 신규 컬럼 마이그레이션 이후에 해당 인덱스 생성 (컬럼 없으면 실패하므로 ALTER 뒤로 이동)
+    try:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_news_fallback ON news_items(event_fallback)")
+    except sqlite3.OperationalError:
+        pass
+
     conn.commit()
     conn.close()
     logger.info(f"[DB] 초기화 완료: {DB_PATH}")
@@ -114,8 +136,9 @@ def save_news_items(items: List[NewsItem]):
                     stock_impacts, tagged_stocks,
                     summary_1line, investment_signal, action_suggestion,
                     risk_factor, impact_chain,
-                    geo_level, geo_region, geo_conflict_type, score_breakdown
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    geo_level, geo_region, geo_conflict_type, score_breakdown,
+                    event_fallback, event_category, event_entity_class
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 item._hash, item.title, item.source, item.source_type, item.url,
                 item.published_time.isoformat() if item.published_time else None,
@@ -130,6 +153,9 @@ def save_news_items(items: List[NewsItem]):
                 item.risk_factor, item.impact_chain,
                 item.geo_level, item.geo_region, item.geo_conflict_type,
                 json.dumps(item.score_breakdown, ensure_ascii=False),
+                1 if getattr(item, "event_fallback", False) else 0,
+                getattr(item, "event_category", None),
+                getattr(item, "event_entity_class", None),
             ))
             saved += 1
         except Exception as e:

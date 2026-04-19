@@ -188,6 +188,10 @@ label, .stSlider label, .stSelectbox label { color: #D1D5DB !important; font-siz
 @st.cache_data(ttl=300)
 def load_news(h=48): return get_recent_news(hours=h, limit=200)
 
+# 대시보드에서 숨길 ticker — 실시간 FDR(KRW/USD)과 중복되는 ECOS 공시 환율은 UI에서 제외
+# (이메일·DB 기록은 유지, UI에서만 숨김)
+_UI_HIDDEN_TICKERS = {"KRW/USD_ECOS"}
+
 @st.cache_data(ttl=300)
 def load_inds():
     conn = get_connection()
@@ -195,7 +199,9 @@ def load_inds():
     conn.close()
     seen, out = set(), []
     for r in [dict(r) for r in rows]:
-        if r["ticker"] not in seen: seen.add(r["ticker"]); out.append(r)
+        t = r["ticker"]
+        if t in _UI_HIDDEN_TICKERS: continue
+        if t not in seen: seen.add(t); out.append(r)
     return out
 
 stats = get_db_stats()
@@ -221,7 +227,7 @@ st.markdown(f'<div class="vd {vc}">{"📈" if is_bull else "📉"} {vt}</div>', 
 # ─── 2. 지표 2줄 (4+4) + 기준일자 ───
 if inds:
     h = '<div class="kgrid">'
-    for i in inds[:8]:
+    for i in inds[:12]:
         c = i.get("change_pct", 0) or 0
         lv = i.get("threshold_level", "정상")
         dc = "#3FB950" if c > 0.01 else "#F85149" if c < -0.01 else "#6B7280"
@@ -259,7 +265,7 @@ if inds:
 st.markdown(f'<div class="cap">강세(BULL) {bull}건 · 약세(BEAR) {bear}건 · 총 뉴스 {stats["news"]}건 · 갱신 {datetime.now().strftime("%H:%M")}</div>', unsafe_allow_html=True)
 
 # ─── 3. 탭 (아이콘 + 명칭) ───
-t1, t2, t3, t4, t5 = st.tabs(["📰 뉴스", "📈 종목", "📊 지표", "🌍 지정학", "📋 히스토리"])
+t1, t2, t3, t4, t5, t6 = st.tabs(["📰 뉴스", "📈 종목", "📊 지표", "🌍 지정학", "📋 히스토리", "🔔 놓친 이벤트"])
 
 # ── NEWS (카테고리별 분류) ──
 with t1:
@@ -468,6 +474,39 @@ with t5:
             st.download_button("CSV 다운로드", csv, f"nias_{hd}d.csv")
         with c2:
             st.metric("수집 뉴스", len(hn))
+
+# ── MISSED EVENTS (단기안 Fallback이 잡은 or 놓친 뉴스) ──
+with t6:
+    mpath = cfg.DATA_DIR / "missed_events.json"
+    st.markdown('<div style="font-size:12px;color:#7D8590;margin-bottom:12px;">'
+                'impact≥5.0 이지만 모든 알림 룰에서 탈락한 뉴스 기록 (중기안 튜닝 입력)'
+                '</div>', unsafe_allow_html=True)
+    if mpath.exists():
+        try:
+            with open(mpath, encoding="utf-8") as f:
+                me = json.load(f)
+        except Exception:
+            me = []
+
+        if me:
+            me_sorted = sorted(me, key=lambda x: x.get("timestamp", ""), reverse=True)[:50]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("누락 건수(최근)", len(me))
+            fb_on = sum(1 for x in me if x.get("event_fallback"))
+            c2.metric("이벤트 fallback 매칭", fb_on)
+            avg = sum(x.get("impact_score", 0) for x in me) / max(1, len(me))
+            c3.metric("평균 impact", f"{avg:.1f}")
+            st.markdown('<div class="gap"></div>', unsafe_allow_html=True)
+
+            df = pd.DataFrame(me_sorted)
+            cols = ["timestamp", "impact_score", "geo_level", "event_category",
+                    "event_entity_class", "source", "title"]
+            cols = [c for c in cols if c in df.columns]
+            st.dataframe(df[cols], use_container_width=True, height=420)
+        else:
+            st.info("누락 이벤트 없음 — 지금까지 수집된 고영향 뉴스가 모두 알림 룰에 매칭되었습니다.")
+    else:
+        st.info("missed_events.json 없음 — 첫 누락 사례 발생 시 자동 생성됩니다.")
 
 # ── FOOTER ──
 st.markdown('<div style="height:60px"></div>', unsafe_allow_html=True)
