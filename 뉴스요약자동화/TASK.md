@@ -503,6 +503,9 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 | 04/18 | (세션) | 일회성 누락 복기 backfill 스크립트 — 지난 7일 geo_level None & impact≥5 뉴스를 fallback 포함 재분류·재스코어링, event_fallback 또는 impact≥7 건만 상위 5건 재발송. 제목 `[사후 알림]` 프리픽스 + 본문 배너 | scripts/backfill_missed.py (신규) |
 | 04/19 | (세션) | Gmail OAuth 토큰 만료(invalid_grant) → `scripts/reauth_gmail.py` 일회성 재인증 스크립트 작성 후 브라우저 OAuth 재완료. backfill 5건 모두 발송 성공 (Hormuz·Iran Navy·Powell 해임 위협) | scripts/reauth_gmail.py (신규) |
 | 04/19 | (세션) | `ENABLE_EXTENDED_GLOBAL=True` 활성화 — AP Top/World/Business, BBC World/Business, Al Jazeera, Guardian World/Business, Reuters Top/World 직접 RSS, NYT World 총 11개 피드 추가 (피드 37→48). Google News 간접 수집 의존도 축소 | config.py |
+| 04/19 | (세션) | AP News 공식 RSS 폐쇄 확인 → `site:apnews.com` Google News 쿼리로 대체 (피드 48→46, 작동하는 피드 기준) | config.py |
+| 04/19 | `a619fb4` | Phase 6 단기안 전체 GitHub origin/main 푸시 완료 (18 files, 1172+/119−) | 전체 |
+| 04/19 | (세션) | 중기안 설계 문서화 — ChatGPT 피드백 "Event → Impact 사이 Why 레이어 부재" 반영해 `docs/MIDTERM_DESIGN.md` 신규 작성. Event Taxonomy + Event Type Classifier + **Cause Analyzer** 서브스펙 + Impact 분기 + Signal 확률 가중 구조 명세 | docs/MIDTERM_DESIGN.md (신규) |
 
 ---
 
@@ -532,8 +535,14 @@ W9~W10── 단독 실행 (통합 테스트 + 실운영 + 최적화)
 - 근본 방향: 키워드 의존도 축소 + 수집 범위 확대 + 누락 감지 루프 구축 (단기안). LLM 기반 event_type_classifier는 중기안으로 분리
 
 ### Phase 6 이후 중기안 로드맵 (설계만)
-- Event Taxonomy (YAML 외부화)
+📄 **상세 설계 문서:** [`docs/MIDTERM_DESIGN.md`](./docs/MIDTERM_DESIGN.md)
+
+- Event Taxonomy (YAML 외부화) — 카테고리 7종 + 서브타입
 - Event Type Classifier 2-Tier (규칙 + Gemini Flash)
-- AP/BBC/Al Jazeera 직접 RSS 활성화
+- **⭐ Cause / Driver Analyzer** (신규) — 이벤트 "왜"를 분해. 구조적 요인 vs 단기 트리거 + 대체 시나리오 + 확률 가중 신호
+  - ChatGPT 피드백 반영 (2026-04-19): "Event → Impact 사이 Why 레이어 부재" 지적
+  - 8~10 작업일, 월 $1~2 추가 LLM 비용
+- 누락 복기 cron 야간 자동 LLM 재분류 + Cause 재판정
+- 동적 이메일 템플릿 (카테고리별) + Dominant Cause 표시
+- 엔티티/원인 자동 확장 (NER) + Cause Taxonomy 튜닝 루프
 - X API / Telegram 공식 채널 모니터링
-- 누락 복기 cron 야간 자동 LLM 재분류
